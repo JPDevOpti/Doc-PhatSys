@@ -1,0 +1,138 @@
+---
+id: front-end-modulo-case-list
+title: Listado de Casos - Búsqueda, Tabla y Acciones
+sidebar_position: 7
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es el módulo Case List?
+
+El **módulo Case List** presenta y opera sobre el inventario de casos en curso: filtros avanzados, tabla paginada/ordenable, detalles en modal y acciones masivas como “Marcar como entregados” y exportación a Excel.
+
+## Arquitectura
+
+```
+modules/case-list/
+├── components/
+│   ├── FiltersBar.vue              ← Filtros avanzados
+│   ├── CasesTable.vue              ← Tabla de casos
+│   ├── CaseDetailsModal.vue        ← Modal de detalles
+│   ├── BatchMarkDeliveredDrawer.vue← Lateral para marcar entregados
+│   └── CaseCreatedToast.vue        ← Toast de creación
+├── composables/
+│   ├── useCaseList.ts              ← Estado, carga, filtrado, paginación
+│   └── useExcelExport.ts           ← Exportación a Excel
+├── services/
+│   └── caseListApi.ts              ← listCases/searchCases/listTests
+├── types/
+│   └── case.types.ts               ← Tipos internos del listado
+├── views/
+│   ├── CurrentCasesListView.vue    ← Vista de casos actuales
+│   └── PreviousCasesListView.vue   ← Vista de casos previos
+└── routes/
+    └── caseListRoutes.ts
+```
+
+## Flujo general y optimizaciones de carga
+
+- `useCaseList.loadCases()` resuelve catálogos mínimos (pruebas) y luego consume `listCases` (100 ítems) o `searchCases` (consulta completa) según la acción.
+- Transformación local de la respuesta del backend a un modelo plano y consistente (normalización de fechas, estados, submuestras y pruebas).
+- Filtrado, ordenamiento, paginación y selección se realizan en el cliente para interacción instantánea.
+- Watchers resetean la página al cambiar filtros/“itemsPerPage”. Eventos globales (`case-created`) refrescan automáticamente.
+
+<CodeBlock language="typescript">{`// Extracto: parámetros enviados al backend
+const serverParams: Record<string, any> = { skip: 0 }
+serverParams.limit = fullSearch ? 100000 : 100
+if (filters.value.searchQuery) serverParams.search = filters.value.searchQuery
+if (filters.value.searchPathologist) serverParams.pathologist = filters.value.searchPathologist
+if (filters.value.selectedEntity) serverParams.entity = filters.value.selectedEntity
+if (filters.value.selectedStatus) serverParams.state = filters.value.selectedStatus
+if (filters.value.selectedTest) serverParams.test = filters.value.selectedTest
+if (filters.value.dateFrom) serverParams.date_from = ddmmyyyyToISO(filters.value.dateFrom)
+if (filters.value.dateTo) serverParams.date_to = ddmmyyyyToISO(filters.value.dateTo)
+`}</CodeBlock>
+
+## Filtros (FiltersBar.vue)
+
+<img src="/img/Captures/FiltosListadoCasos.png" alt="Barra de filtros del listado de casos" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Campos para búsqueda general, rango de fechas, patólogo, entidad, prueba y estado. Incluye acciones: Buscar, Limpiar, Exportar a Excel y Actualizar.
+</div>
+
+- Subcomponentes: `FormInput`, `DateInputField`, `EntityList`, `MethodSelector` (pruebas), `FormSelect`, `BaseButton`.
+- Integración: bindea con `useCaseList.filters` y dispara `loadCases()`/`clearFilters()`/`useExcelExport`.
+
+## Tabla (CasesTable.vue)
+
+<img src="/img/Captures/TablaCasos.png" alt="Tabla del listado de casos" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Tabla ordenable con selección por filas, paginación, y columnas: código, paciente, entidad/patólogo, pruebas, estado, fechas y acciones.
+</div>
+
+- Ordenamiento: `@sort` → `useCaseList.sortBy(key)` con cambio asc/desc.
+- Selección múltiple: checkboxes + `isAllSelected`/`toggleSelectAll`.
+- Paginación: control de `currentPage` + `itemsPerPage` con `paginatedCases`/`totalPages`.
+- Botones de acción por fila: ver detalles, copiar código, asignar/desasignar (cuando aplica), abrir “Marcar como entregados”.
+
+## Detalles del Caso (CaseDetailsModal.vue)
+
+<img src="/img/Captures/DetallesCaso.png" alt="Modal de detalles del caso" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0', maxWidth: '680px'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Modal con datos completos del caso: paciente (documento, edad, género, entidad), atención, patólogo, hitos temporales, submuestras/pruebas y acciones.
+</div>
+
+- Usa `selectedCase` de `useCaseList` y se muestra con `showDetails(c)`.
+- Formato y badges de estado/priority para lectura rápida. Opción de imprimir PDF (cuando aplica).
+
+## Marcar como Entregados (BatchMarkDeliveredDrawer.vue)
+
+<img src="/img/Captures/MarcarEntregado.png" alt="Acción masiva: marcar casos como entregados" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Lateral para confirmar entrega de uno o varios casos seleccionados. Permite revisar submuestras, registrar a quién se entregan y confirmar.
+</div>
+
+- Entrada: lista de IDs seleccionados (`selectedCaseIds`).
+- Comportamiento: muestra resumen por caso, permite editar submuestras restantes y confirma.
+- Persistencia: invoca endpoint de actualización en lote (cuando está disponible) o acción equivalente en `casesApiService`.
+
+## Transformación y modelo de datos
+
+`useCaseList` transforma la respuesta del backend (`BackendCase`) a un modelo UI `Case` con campos planos, normalización de estados y consolidación de pruebas por submuestra.
+
+<CodeBlock language="typescript">{`type Case = {
+  id: string
+  caseCode: string
+  patient: { fullName: string; dni: string; entity: string; age: number; sex: string }
+  entity: string
+  sampleType: string
+  status: 'En proceso' | 'Por firmar' | 'Por entregar' | 'Completado'
+  receivedAt: string
+  deliveredAt?: string
+  signedAt?: string
+  tests: string[]
+  pathologist?: string
+  subsamples: Array<{ bodyRegion: string; tests: Array<{ id: string; name: string; quantity: number }> }>
+}`}</CodeBlock>
+
+## Rutas
+
+<CodeBlock language="typescript">{`// modules/case-list/routes/caseListRoutes.ts
+export const caseListRoutes = [
+  { path: '/case-list/current', name: 'case-list-current', component: () => import('../views/CurrentCasesListView.vue'), meta: { requiresAuth: true } },
+  { path: '/case-list/previous', name: 'case-list-previous', component: () => import('../views/PreviousCasesListView.vue'), meta: { requiresAuth: true } }
+]`}</CodeBlock>
+
+## Exportación a Excel
+
+- `useExcelExport` utiliza `filteredCases` para generar el dataset según filtros aplicados.
+- Mapea columnas clave (código, paciente, entidad, estado, fechas, pruebas) y descarga el archivo (`.xlsx`).
+
+## Resumen de botones de acción
+
+- **Buscar**: ejecuta `loadCases()` con parámetros.
+- **Limpiar**: `clearFilters()` y restablece fechas por defecto.
+- **Exportar a Excel**: `useExcelExport` con datos filtrados.
+- **Actualizar**: solicita recarga ignorando caché local.
+- **Ver detalles**: abre `CaseDetailsModal`.
+- **Marcar como entregados**: abre `BatchMarkDeliveredDrawer` con selección actual.

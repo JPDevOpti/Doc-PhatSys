@@ -1,0 +1,156 @@
+---
+id: introduccion
+title: Introducción
+---
+
+## ¿Qué es PathSys?
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  PathSys es un Sistema de Información de Laboratorio (LIS) enfocado en patología, desarrollado específicamente para la UT LIME (Laboratorios Integrados de Medicina Especializada). Centraliza la gestión de casos, pacientes, pruebas, resultados, aprobaciones y la coordinación entre los diferentes perfiles del laboratorio. Su objetivo es reducir tiempos operativos, mejorar la trazabilidad clínica y estandarizar la calidad del reporte diagnóstico.
+</div>
+
+<div style={{marginTop: 12}}>
+  {/* Dashboard image inserted under “¿Qué es PathSys?” */}
+  <img src="/img/Captures/Dashboard.png" alt="Vista del panel principal de PathSys" style={{display: 'block', width: '100%', maxWidth: 980, margin: '0 auto', borderRadius: 8, border: '1px solid #e5e7eb', boxShadow: '0 1px 2px rgba(0,0,0,0.04)'}} />
+  <div style={{textAlign: 'center', fontSize: 13, color: '#6b7280', marginTop: 6}}>Vista del panel principal (ejemplo)</div>
+</div>
+
+### Contexto institucional
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  La UT LIME articula actividades de docencia, investigación y extensión mediante la prestación de servicios de laboratorio clínico y especializado a diferentes entidades del sector salud. El Laboratorio de Patología procesa aproximadamente 1.000 muestras mensuales provenientes de diversas instituciones, cumpliendo un rol fundamental en el diagnóstico de enfermedades mediante el análisis de muestras histológicas y citológicas.
+</div>
+
+
+
+### Problema que resuelve
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+Actualmente, el laboratorio gestiona su información mediante registros físicos y herramientas ofimáticas básicas, lo que genera:
+
+- <strong>Fragmentación de la información</strong>: datos clínicos, solicitudes y resultados dispersos en múltiples hojas o sistemas.
+- <strong>Trazabilidad limitada</strong>: dificultad para seguir el ciclo de vida de un caso desde su creación hasta el reporte final.
+- <strong>Riesgos operativos</strong>: duplicidad de registros, pérdida de información, retrasos en la entrega de resultados.
+- <strong>Control de calidad</strong>: necesidad de flujos de aprobación y auditoría estructurados.
+- <strong>Escalabilidad</strong>: crecimiento de volumen de casos y usuarios manteniendo performance y seguridad.
+</div>
+
+## ¿Para qué se va a usar?
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  <ul style={{margin: 0, paddingLeft: 18}}>
+    <li>Registrar y administrar casos de patología, con su información clínica y pruebas asociadas.</li>
+    <li>Gestionar el ciclo de vida del caso (creación, asignación, análisis, validación, aprobación y reporte).</li>
+    <li>Controlar permisos y acciones por rol (autenticación, autorización y auditoría).</li>
+    <li>Generar informes diagnósticos en formatos digitales certificados.</li>
+    <li>Operar en entornos clínicos con múltiples sedes y equipos, con despliegue sencillo.</li>
+  </ul>
+</div>
+
+## Visión general de la arquitectura
+
+<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Back-End (API)</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Endpoints versionados bajo <code>/api/v1</code>, módulos por dominio (auth, patients, entities, tests, cases, pathologists, residents, auxiliaries, billing, diseases, tickets, approvals) y gestión de seguridad, persistencia y validaciones.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Front-End (Web App)</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Aplicación Vue 3 que consume la API, navegación por módulos, control de sesión y roles, y componentes visuales para el flujo operativo del laboratorio.</div>
+  </div>
+</div>
+
+## Tecnologías utilizadas y por qué
+
+<details>
+  <summary style={{cursor: 'pointer', fontWeight: 600, color: '#374151'}}>Back-End</summary>
+  <div style={{marginTop: 8}}>
+    <ul style={{margin: 0, paddingLeft: 18}}>
+      <li><strong>FastAPI</strong>: framework moderno de Python para APIs. Tipado con Pydantic, rendimiento ASGI y documentación automática (OpenAPI/Swagger).</li>
+      <li><strong>Pydantic v2 + pydantic-settings</strong>: modelos de datos y configuración de entorno para integridad y parametrización por ambiente.</li>
+      <li><strong>MongoDB (Motor)</strong>: base NoSQL orientada a documentos; flexibilidad de esquemas; <code>motor</code> como cliente asíncrono.</li>
+      <li><strong>Autenticación JWT</strong> (python-jose, passlib): emisión/verificación de tokens; hashing seguro (argon2/bcrypt).</li>
+      <li><strong>Starlette/CORS</strong>: middleware para exposición segura de la API a distintos orígenes.</li>
+      <li><strong>Docker / docker-compose</strong>: empaquetado y entorno reproducible con servicios auxiliares.</li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary style={{cursor: 'pointer', fontWeight: 600, color: '#374151'}}>Front-End</summary>
+  <div style={{marginTop: 8}}>
+    <ul style={{margin: 0, paddingLeft: 18}}>
+      <li><strong>Vue 3 + Vite + TypeScript</strong>: SPA de alto rendimiento; robustez con TS; DX rápida con Vite.</li>
+      <li><strong>Vue Router</strong>: enrutamiento modular por dominios funcionales.</li>
+      <li><strong>Pinia</strong>: estado tipado para autenticación y datos compartidos.</li>
+      <li><strong>Tailwind CSS</strong>: estilos utilitarios consistentes y diseño responsivo ágil.</li>
+      <li><strong>Axios</strong>: cliente HTTP con interceptores y manejo de errores.</li>
+      <li><strong>ApexCharts</strong>: visualizaciones para paneles y métricas operativas.</li>
+    </ul>
+  </div>
+</details>
+
+## Seguridad y cumplimiento
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  <ul style={{margin: 0, paddingLeft: 18}}>
+    <li><strong>JWT con expiración</strong> y verificación en cliente para proteger rutas y forzar re-autenticación al expirar.</li>
+    <li><strong>Hash de contraseñas</strong> con algoritmos modernos (argon2/bcrypt) para mitigar riesgos.</li>
+    <li><strong>CORS</strong> configurado para entornos de desarrollo y producción.</li>
+    <li><strong>Manejo de errores</strong> consistente en la API: respuestas normalizadas y logs para diagnóstico.</li>
+    <li><strong>Cumplimiento normativo</strong>: alineado con normativa colombiana (Ley 1438 de 2011, Resolución 1995 de 1999, Resolución 3100 de 2019).</li>
+  </ul>
+</div>
+
+
+## Roles y usuarios
+
+<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Patólogos</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Responsables del diagnóstico, validación y aprobación de reportes. Gestionan casos complejos, definen criterios y supervisan la calidad del proceso.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Residentes</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Apoyan el análisis de casos, preparan borradores de informes y siguen protocolos establecidos bajo supervisión de patólogos.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Auxiliares</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Gestionan recepción de muestras, registro de datos operativos, trazabilidad y soporte logístico del flujo de laboratorio.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Facturación</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Administran la liquidación de servicios, integración con entidades y control de cobros asociados a casos y pruebas.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Soporte</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Aseguran continuidad operativa del sistema, atención a incidencias, mantenimiento y mejoras técnicas.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Administrador</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Gestiona permisos y acceso, administración de usuarios y roles, configuración del sistema y supervisión de auditorías y parámetros operativos.</div>
+  </div>
+</div>
+
+## Metodología y objetivos del proyecto
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  El desarrollo sigue una metodología ágil con iteraciones cortas que incluyen levantamiento de requisitos, diseño, desarrollo, pruebas y validación con usuarios del laboratorio. Los objetivos específicos son:
+  <ul style={{marginTop: 8, paddingLeft: 18}}>
+    <li>Identificar necesidades actuales mediante levantamiento de requisitos de software con los usuarios del laboratorio.</li>
+    <li>Diseñar una metodología de trabajo y soluciones alineadas con los requisitos identificados.</li>
+    <li>Desarrollar un aplicativo que cubra las necesidades operativas del laboratorio (trazabilidad, seguridad, control de calidad y reporte digital).</li>
+    <li>Desplegar y validar el sistema con usuarios clave, capacitar al personal e implementar el uso en producción.</li>
+  </ul>
+</div>
+
+## Estado actual y plan de documentación
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  <p style={{marginTop: 0}}>Esta documentación evolucionará por secciones:</p>
+  <ul style={{marginTop: 8, paddingLeft: 18}}>
+    <li>Manual de Usuario: navegación, flujos por rol y casos de uso.</li>
+    <li>Front-End: arquitectura, routing, estado, comunicación con API y manejo de errores.</li>
+    <li>Back-End: configuración, seguridad, base de datos, módulos y endpoints.</li>
+    <li>API: referencia de endpoints por módulo con ejemplos.</li>
+  </ul>
+  <p style={{marginTop: 12}}>Con esta visión general, los siguientes capítulos profundizarán en cada área para facilitar tanto la operación diaria como el mantenimiento y evolución del sistema.</p>
+</div>

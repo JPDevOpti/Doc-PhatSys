@@ -1,0 +1,196 @@
+---
+id: front-end-modulo-results
+title: Resultados - Transcribir y Firmar
+sidebar_position: 8
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es el módulo Results?
+
+El **módulo Results** soporta el flujo de transcripción y firma de resultados para un caso: búsqueda por código, ingreso de Método, Corte Macro, Corte Micro y Diagnóstico, previsualización, guardado de borrador y marcación "Por firmar".
+
+## Arquitectura
+
+```
+modules/results/
+├── components/
+│   ├── PerformResults/               ← Transcribir resultados
+│   │   ├── PerformResults.vue
+│   │   └── ResultEditor.vue
+│   ├── SignResults/                  ← Firmar resultados
+│   │   ├── SignResults.vue
+│   │   └── ComplementaryTestsSection.vue
+│   └── Shared/                       ← Cards y paneles comunes
+│       ├── PatientInfoCard.vue
+│       ├── CaseDetailsCard.vue
+│       ├── MethodSection.vue
+│       ├── ResultEditor.vue
+│       ├── AttachmentsPanel.vue
+│       └── ResultsActionNotification.vue
+├── composables/
+│   ├── usePerformResults.ts          ← Estado/acciones de transcripción
+│   └── useCaseSearch.ts              ← Búsqueda de casos
+├── services/
+│   ├── resultsApiService.ts          ← Guardar/actualizar resultados
+│   ├── signApiService.ts             ← Servicios de firma (cuando aplique)
+│   └── results.mappers.ts            ← Mapas case→patient/caseDetails
+├── types/
+│   └── results.types.ts
+├── views/
+│   ├── PerformResultsView.vue
+│   └── SignResultsView.vue
+└── routes/
+    └── resultsRoutes.ts
+```
+
+## Buscador de caso
+
+<img src="/img/Captures/BuscadorResultados.png" alt="Buscador de caso para resultados" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Permite cargar resultados a partir del código de caso.
+</div>
+
+- Acción: `loadCaseByCode(caseCode)` en `usePerformResults`.
+- Carga: detalles del caso, info del paciente y casos previos del mismo paciente.
+
+## Sección Método
+
+<img src="/img/Captures/ResultadoMetodo.png" alt="Sección Método" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Selección de uno o varios métodos. Se exige al menos un método no vacío para completar.
+</div>
+
+- `sections.method: string[]` con normalización a los valores del catálogo.
+- El backend recibe el arreglo como `method: string[]` (no texto concatenado).
+
+## Sección Corte Macro
+
+<img src="/img/Captures/ResultadoMacro.png" alt="Sección Corte Macro" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Editor enriquecido para el texto del corte macroscópico.
+</div>
+
+- `sections.macro` y `sections.micro` son campos de texto libre.
+
+## Paneles de apoyo
+
+<img src="/img/Captures/InformacionPacienteResultado.png" alt="Información del paciente en resultados" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0', maxWidth: '420px'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Tarjetas con datos del paciente y del caso, además de una tabla compacta de casos anteriores.
+</div>
+
+### Qué se envía y qué se recibe (PerformResults)
+
+**Envío (borrador o completar):**
+
+<CodeBlock language="typescript">
+{`type UpdateResultRequest = {
+  method: string[]
+  macro_result: string
+  micro_result: string
+  diagnosis: string
+  observations?: string
+  diagnostico_cie10?: { id?: string; codigo: string; nombre: string }
+  diagnostico_cieo?: { id?: string; codigo: string; nombre: string }
+}`}
+</CodeBlock>
+
+**Respuesta típica (resumen del resultado guardado en el caso):**
+
+<CodeBlock language="typescript">
+{`type CaseResultResponse = {
+  case_code: string
+  result: {
+    method: string[]
+    macro_result: string
+    micro_result: string
+    diagnosis: string
+    cie10_diagnosis?: { code: string; name: string }
+    cieo_diagnosis?: { code: string; name: string }
+    updated_at: string
+  }
+}`}
+</CodeBlock>
+
+## Detalles del caso
+
+<img src="/img/Captures/DetallesCasoResultados.png" alt="Detalles del caso en resultados" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0', maxWidth: '420px'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Muestra entidad, patólogo asignado, creación/actualización, muestras y pruebas, y observaciones generales.
+</div>
+
+## Flujo de guardado y completado (usePerformResults)
+
+<CodeBlock language="typescript">{`// Borrador (guardar progreso)
+const requestData: UpdateResultRequest = {
+  method: sections.value.method,
+  macro_result: sections.value.macro,
+  micro_result: sections.value.micro,
+  diagnosis: sections.value.diagnosis,
+  observations: undefined,
+  diagnostico_cie10: hasDisease.value ? { id: primaryDisease.value.id, codigo: primaryDisease.value.code, nombre: primaryDisease.value.name } : undefined,
+  diagnostico_cieo: hasDiseaseCIEO.value ? { id: primaryDiseaseCIEO.value.id, codigo: primaryDiseaseCIEO.value.code, nombre: primaryDiseaseCIEO.value.name } : undefined
+}
+await resultsApiService.updateCaseResult(sample.value.id, requestData)
+
+// Completar para firma
+await resultsApiService.updateCaseResult(sample.value.id, requestData)
+await casesApiService.updateCaseState(sample.value.id, 'Por firmar')
+`}</CodeBlock>
+
+## Diagnóstico CIE-10 y CIE-O para firma
+
+<img src="/img/Captures/CIE-10.png" alt="Selección de diagnóstico CIE-10 y CIE-O" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Buscador doble: CIE-10 (obligatorio) y CIE-O (opcional). Ambos se envían junto al resultado y se validan al firmar.
+</div>
+
+### Contratos
+
+<CodeBlock language="typescript">
+{`// Fragmento incluido en UpdateResultRequest
+{
+  diagnostico_cie10: { codigo: 'D359', nombre: 'TUMOR BENIGNO ...' },
+  diagnostico_cieo: { codigo: 'C837', nombre: 'Tumor de burkitt' }
+}`}
+</CodeBlock>
+
+## Solicitud de Pruebas Complementarias
+
+<img src="/img/Captures/SolicitudPruebasComplementarias.png" alt="Solicitud de pruebas complementarias" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Permite agregar pruebas adicionales con cantidades y un motivo, cuando el diagnóstico requiere estudios complementarios.
+</div>
+
+### Contrato de envío de solicitud
+
+<CodeBlock language="typescript">
+{`POST /cases/{case_code}/complementary-tests/requests
+{
+  items: [
+    { test_id: '898301', quantity: 2 },
+    { test_id: 'PM-FETO-PL', quantity: 4 }
+  ],
+  reason: 'Se requieren estudios complementarios para completar el diagnóstico.'
+}
+// Respuesta
+{
+  request_id: 'REQ-2025-0001',
+  case_code: '2025-05022',
+  status: 'pending',
+  created_at: '2025-10-08T12:00:00Z'
+}`}
+</CodeBlock>
+
+## Reglas de validación
+
+- Para “Guardar Progreso”: alcanza con que exista contenido en alguna sección.
+- Para “Completar (Por firmar)”: requiere al menos un Método y que Macro, Micro y Diagnóstico no estén vacíos.
+
+## Rutas
+
+<CodeBlock language="typescript">{`export const resultsRoutes = [
+  { path: '/results/perform', name: 'results-perform', component: () => import('../views/PerformResultsView.vue'), meta: { requiresAuth: true } },
+  { path: '/results/sign', name: 'results-sign', component: () => import('../views/SignResultsView.vue'), meta: { requiresAuth: true } }
+]`}</CodeBlock>

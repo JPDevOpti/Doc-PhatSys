@@ -1,0 +1,145 @@
+---
+id: tablas
+title: Tablas
+sidebar_position: 3.5
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué son las tablas?
+
+Las **tablas** son componentes fundamentales en PathSys para la visualización y gestión de grandes volúmenes de datos estructurados. Permiten presentar información de manera organizada, facilitando la lectura, comparación y manipulación de registros como casos, pacientes, patólogos o entidades.
+
+### ¿Por qué son importantes?
+
+- **Organización de datos**: Presentan la información de forma clara y estructurada
+- **Facilidad de lectura**: Permiten escanear y comprender rápidamente los datos
+- **Interacción**: Integran funcionalidades como filtros, ordenamiento y acciones por fila
+- **Consistencia**: Mantienen un diseño uniforme para una experiencia de usuario predecible
+
+## Ubicación de las tablas en el código
+
+Las tablas en PathSys están implementadas como componentes específicos dentro de cada módulo, siguiendo un patrón consistente:
+
+### Estructura de archivos
+
+```
+Front-End/src/modules/
+├── case-list/                    ← Módulo de listado de casos
+│   ├── components/
+│   │   ├── CasesTable.vue        ← Tabla de casos
+│   │   ├── FiltersBar.vue        ← Barra de filtros para casos
+│   │   └── CaseTableCard.vue     ← Card contenedor de la tabla
+│   └── views/
+│       └── CurrentCasesListView.vue ← Vista principal
+├── patients-list/                ← Módulo de listado de pacientes
+│   ├── components/
+│   │   ├── PatientsTable.vue     ← Tabla de pacientes
+│   │   ├── FiltersBar.vue        ← Barra de filtros para pacientes
+│   │   └── PatientTableCard.vue  ← Card contenedor de la tabla
+│   └── views/
+│       └── PatientsListView.vue  ← Vista principal
+├── complementary-techniques/     ← Módulo de técnicas complementarias
+│   ├── components/
+│   │   └── ListComplementaryTechniques/
+│   │       └── ComplementaryTechniquesFilters.vue ← Filtros
+│   └── views/
+│       └── ComplementaryTechniquesView.vue ← Vista principal
+└── shared/components/ui/         ← Componentes base reutilizables
+    ├── lists/                    ← Listados de selección
+    └── feedback/                 ← Componentes de feedback
+        ├── LoadingSpinner.vue    ← Spinner de carga
+        ├── ErrorMessage.vue      ← Mensajes de error
+        └── Notification.vue      ← Notificaciones
+```
+
+## Componentes principales de las tablas
+
+### 1. Tabla base
+
+La tabla base es el esqueleto sobre el cual se construyen todas las tablas del sistema. Proporciona la estructura para mostrar filas y columnas de datos.
+
+<img 
+  src="/img/Captures/Tabla.png" 
+  alt="Ejemplo de tabla de casos en PathSys" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '800px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Tabla de Casos:</strong> Muestra un listado de casos con columnas como Código Caso, Paciente, Institución, Pruebas, N° Placas, Entrega/Fecha, Estado y Acciones.
+</div>
+
+**Características de la tabla base:**
+- **Encabezados de columna**: Definidos para cada campo de datos
+- **Filas de datos**: Cada fila representa un registro individual
+- **Celdas**: Contienen el valor de cada campo para un registro
+- **Estilos consistentes**: Bordes, espaciado y tipografía uniformes
+
+### 2. Filtros de tabla
+
+Los filtros permiten a los usuarios refinar los datos mostrados en la tabla, buscando información específica o aplicando criterios de búsqueda. Se integran en la parte superior de la tabla para una interacción intuitiva.
+
+<img 
+  src="/img/Captures/Filtros.png" 
+  alt="Ejemplo de filtros de tabla en PathSys" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '800px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Filtros de Tabla:</strong> Muestra campos de entrada para buscar por código, documento, nombre del paciente, fechas, institución, tipo de prueba y estado, junto con botones de acción.
+</div>
+
+**Características de los filtros:**
+- **Campos de entrada**: Para texto, selectores, fechas, etc.
+- **Botones de acción**: Como "Buscar", "Limpiar", "Exportar" y "Actualizar"
+- **Integración**: Se ubican lógicamente sobre la tabla para afectar directamente los datos mostrados
+
+### 3. Componentes de filtros especializados
+
+Los filtros en PathSys utilizan componentes específicos según el tipo de datos:
+
+**Tipos de filtros disponibles:**
+- **Búsqueda general**: Campo de texto para buscar por múltiples campos
+- **Filtros de fecha**: Rango de fechas con campos "desde" y "hasta"
+- **Filtros de entidad**: Listado de entidades de salud
+- **Filtros de estado**: Estados predefinidos del sistema
+- **Filtros de tipo**: Categorías específicas (tipo de prueba, atención, etc.)
+
+## Estados de las tablas
+
+### Estados básicos
+
+Las tablas en PathSys tienen diferentes estados para comunicar su condición:
+
+- **Cargando**: Muestra spinner mientras se obtienen los datos
+- **Con datos**: Tabla poblada con información
+- **Vacía**: Sin datos que mostrar
+- **Error**: Problema al cargar la información
+- **Filtrada**: Datos reducidos por filtros aplicados
+
+**Indicadores visuales:**
+- **Spinner de carga**: Durante la obtención de datos
+- **Mensaje de "Sin datos"**: Cuando no hay información
+- **Mensaje de error**: Cuando ocurre un problema
+- **Contador de resultados**: Muestra cuántos registros se encontraron
+
+## Funcionalidades de las tablas
+
+### Ordenamiento
+
+- **Clic en encabezado**: Ordena por esa columna
+- **Indicador visual**: Flecha que muestra dirección del ordenamiento
+- **Ordenamiento múltiple**: Algunas columnas permiten ordenamiento secundario
+
+### Paginación
+
+- **Navegación por páginas**: Botones anterior/siguiente
+- **Selector de tamaño**: Cambiar cantidad de elementos por página
+- **Información de página**: "Página X de Y"
+
+### Acciones por fila
+
+- **Botón "Ver"**: Mostrar detalles completos
+- **Botón "Editar"**: Modificar información
+- **Botón "Eliminar"**: Remover registro (con confirmación)
+- **Menú contextual**: Acciones adicionales

@@ -1,0 +1,117 @@
+---
+id: front-end-modulo-patients-list
+title: Listado de Pacientes - Filtros, Tabla y Detalles
+sidebar_position: 6
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es el módulo Patients List?
+
+El **módulo Patients List** permite buscar, filtrar y gestionar pacientes existentes. Incluye filtros avanzados, tabla ordenable/paginada, modal de detalles y exportación a Excel.
+
+## Arquitectura
+
+```
+modules/patients-list/
+├── components/
+│   ├── FiltersBar.vue
+│   ├── PatientsTable.vue
+│   ├── PatientDetailsModal.vue
+│   ├── PatientInfoCard.vue
+│   ├── PatientSearchCard.vue
+│   ├── PatientTableCard.vue
+│   └── PatientsView.vue
+├── composables/
+│   ├── usePatientList.ts
+│   └── usePatientExcelExport.ts
+├── services/
+│   └── patientListApi.ts
+├── types/
+│   └── patient.types.ts
+├── views/
+│   └── PatientsListView.vue
+└── routes/
+    └── patientListRoutes.ts
+```
+
+## Filtros (FiltersBar.vue)
+
+<img src="/img/Captures/FiltrosPacientes.png" alt="Barra de filtros de pacientes" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Búsqueda general por nombre/documento y filtros por fechas, entidad, tipo de atención, género, municipio y subregión. Acciones: Buscar, Limpiar, Exportar, Actualizar.
+</div>
+
+- Bindea con `usePatientList.filters` y ejecuta `loadPatients()`.
+- Cuando hay filtros, usa búsqueda avanzada (`searchPatientsAdvanced`); sin filtros, `listPatients`.
+
+## Tabla (PatientsTable.vue)
+
+<img src="/img/Captures/TablaPacientes.png" alt="Tabla de pacientes" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Tabla ordenable por columnas y paginada. Muestra documento, nombre, género/edad, entidad/tipo, municipio/subregión, fecha y acciones.
+</div>
+
+- Ordenamiento cliente: `sortBy(key)` con `sortKey`/`sortOrder`.
+- Paginación cliente: `itemsPerPage`/`currentPage` y `paginatedPatients`.
+- Selección múltiple: `isAllSelected`, `toggleSelectAll`, `toggleSelect`.
+- Acciones por fila: ver detalles, editar, cambiar identificación (cuando aplique).
+
+## Detalles del Paciente (PatientDetailsModal.vue)
+
+<img src="/img/Captures/DetallesPacientes.png" alt="Modal de detalles del paciente" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0', maxWidth: '720px'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Muestra datos completos del paciente y lista de casos asociados con estados e hitos temporales.
+</div>
+
+- Al abrir, invoca `getPatientCases(patient_code)` y renderiza los casos del paciente.
+
+## Flujo y optimización de carga (usePatientList)
+
+<CodeBlock language="typescript">{`// Decidir list vs advanced search
+const hasFilters = !!(filters.value.search || filters.value.identification_type || filters.value.identification_number || filters.value.first_name || filters.value.first_lastname || filters.value.birth_date_from || filters.value.birth_date_to || filters.value.municipality_code || filters.value.municipality_name || filters.value.subregion || filters.value.age_min || filters.value.age_max || filters.value.entity || filters.value.gender || filters.value.care_type || filters.value.date_from || filters.value.date_to)
+
+let data: BackendPatient[] = []
+let total = 0
+if (forceAdvancedSearch || hasFilters) {
+  const result = await searchPatientsAdvanced(filters.value)
+  data = result.patients
+  total = result.total
+} else {
+  data = await listPatients(filters.value)
+  total = data.length
+}
+`}</CodeBlock>
+
+## Modelo de datos transformado
+
+<CodeBlock language="typescript">{`type Patient = {
+  id: string
+  patient_code: string
+  identification_type: 'CC' | 'TI' | 'CE' | 'PA' | string
+  identification_number: string
+  first_name: string
+  second_name?: string
+  first_lastname: string
+  second_lastname?: string
+  birth_date: string
+  gender: 'Masculino' | 'Femenino'
+  location: { municipality_code: string; municipality_name: string; subregion: string; address: string }
+  entity_info: { id: string; name: string }
+  care_type: 'Ambulatorio' | 'Hospitalizado'
+  observations?: string
+  created_at: string
+  updated_at: string
+  full_name: string
+  age: number
+}`}</CodeBlock>
+
+## Rutas
+
+<CodeBlock language="typescript">{`export const patientListRoutes = [
+  { path: '/patients/list', name: 'patients-list', component: () => import('../views/PatientsListView.vue'), meta: { requiresAuth: true } }
+]`}</CodeBlock>
+
+## Exportación a Excel
+
+- `usePatientExcelExport` usa el conjunto filtrado/ordenado para generar un `.xlsx` con columnas documento, nombre, edad, género, entidad/tipo, municipio/subregión y fecha de creación.

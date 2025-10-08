@@ -1,0 +1,114 @@
+---
+id: ui-ux
+title: UI & UX
+sidebar_position: 4.0
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es UI & UX en PathSys?
+
+**UI & UX** (User Interface & User Experience) en PathSys abarca todo el sistema de diseño, componentes de interfaz y patrones de experiencia de usuario que conforman la aplicación. Incluye desde la estructura visual básica hasta los detalles de interacción, asegurando una experiencia consistente, accesible y eficiente para todos los usuarios del sistema.
+
+### ¿Por qué es importante?
+
+- **Consistencia visual**: Mantiene un lenguaje de diseño uniforme en toda la aplicación
+- **Eficiencia de usuario**: Optimiza los flujos de trabajo para profesionales médicos
+- **Accesibilidad**: Asegura que el sistema sea usable por todos los tipos de usuarios
+- **Mantenibilidad**: Componentes reutilizables que facilitan el desarrollo y actualizaciones
+
+## Sistema de diseño LIME
+
+PathSys implementa un sistema de diseño coherente basado en la identidad institucional de LIME (Laboratorios Integrados de Medicina Especializada), con elementos visuales que reflejan la profesionalidad y confiabilidad requerida en el ámbito médico.
+
+### Principios fundamentales
+
+1. **Claridad**: Interfaces limpias que facilitan la toma de decisiones médicas
+2. **Eficiencia**: Flujos optimizados para reducir el tiempo de trabajo
+3. **Confianza**: Diseño profesional que inspira confianza en los usuarios
+4. **Accesibilidad**: Cumplimiento de estándares de accesibilidad web
+
+
+## Componentes del sistema
+
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+  <div class="card">
+    <h3>Layouts y navegación</h3>
+    <p>Cómo se organiza la estructura visual: layouts, encabezado, barra lateral y rutas.</p>
+    <a href="./layouts-navegacion">Ir a la guía</a>
+  </div>
+  <div class="card">
+    <h3>Botones y acciones</h3>
+    <p>Variantes, estados, iconos y accesibilidad para acciones consistentes.</p>
+    <a href="./botones-acciones">Ir a la guía</a>
+  </div>
+  <div class="card">
+    <h3>Formularios</h3>
+    <p>Entradas, validaciones, feedback de error y envío seguro.</p>
+    <a href="./formularios">Ir a la guía</a>
+  </div>
+  <div class="card">
+    <h3>Listados</h3>
+    <p>Componentes de selección guiada y listas de opciones predefinidas.</p>
+    <a href="./listados">Ir a la guía</a>
+  </div>
+  <div class="card">
+    <h3>Tablas</h3>
+    <p>Presentación de datos, estados vacíos, filtros y paginación.</p>
+    <a href="./tablas">Ir a la guía</a>
+  </div>
+  <div class="card">
+    <h3>Feedback y notificaciones</h3>
+    <p>Modales, loaders, toasts y mensajes de estado claros.</p>
+    <a href="./feedback-notificaciones">Ir a la guía</a>
+  </div>
+  <div class="card">
+    <h3>Iconografía y tipografía</h3>
+    <p>Uso de iconos, tamaños, colores, semántica y sistema tipográfico.</p>
+    <a href="./iconografia-tipografia">Ir a la guía</a>
+  </div>
+  <div class="card">
+    <h3>Assets y recursos</h3>
+    <p>Logos, imágenes, estilos y recursos estáticos del sistema.</p>
+    <a href="./assets-recursos">Ir a la guía</a>
+  </div>
+</div>
+
+## Cómo usar el sistema de diseño
+
+### Para desarrolladores
+
+El sistema de diseño de PathSys está implementado con **Vue 3** y **Tailwind CSS**, proporcionando componentes reutilizables y utilidades de estilo consistentes.
+
+**Ubicación de componentes:**
+```
+src/shared/components/ui/
+├── buttons/          ← Componentes de botones
+├── forms/            ← Componentes de formularios
+├── lists/            ← Componentes de listados
+├── feedback/         ← Componentes de feedback
+└── navigation/       ← Componentes de navegación
+```
+
+**Importación de componentes:**
+<CodeBlock language="vue">{`<script setup lang="ts">
+// Importar componentes individuales
+import { BaseButton, FormInput, Notification } from '@/shared/components/ui'
+
+// O importar desde el índice
+import { BaseButton, FormInput } from '@/shared'
+</script>
+
+<template>
+  <BaseButton variant="primary" size="md">
+    Guardar
+  </BaseButton>
+  
+  <FormInput 
+    v-model="value" 
+    label="Nombre"
+    placeholder="Ingrese el nombre"
+  />
+</template>`}</CodeBlock>
+
+Este sistema de diseño asegura que PathSys mantenga una experiencia de usuario profesional, consistente y eficiente, optimizada para el trabajo médico especializado.

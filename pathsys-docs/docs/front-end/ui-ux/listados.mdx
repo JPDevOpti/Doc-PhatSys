@@ -1,0 +1,292 @@
+---
+id: listados
+title: Listados
+sidebar_position: 3.3
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué son los listados?
+
+Los **listados** son componentes especializados en PathSys que permiten buscar y seleccionar elementos de catálogos específicos del sistema. A diferencia de las tablas que muestran datos para consulta, los listados son componentes de entrada que facilitan la selección de valores predefinidos como entidades, patólogos, pruebas, municipios o regiones del cuerpo.
+
+### ¿Por qué son importantes?
+
+- **Selección guiada**: Proporcionan opciones predefinidas y válidas
+- **Búsqueda eficiente**: Permiten encontrar elementos específicos rápidamente
+- **Consistencia de datos**: Aseguran que se seleccionen valores válidos del sistema
+- **Experiencia de usuario**: Interfaz intuitiva para selección de elementos
+
+## Ubicación de los listados en el código
+
+Los componentes de listados en PathSys están organizados en una estructura modular:
+
+### Estructura de archivos
+
+```
+Front-End/src/shared/components/ui/lists/
+├── EntityList.vue           ← Listado de entidades de salud
+├── PathologistList.vue     ← Listado de patólogos
+├── TestList.vue            ← Listado de pruebas médicas
+├── MunicipalityList.vue    ← Listado de municipios
+├── BodyRegionList.vue      ← Listado de regiones del cuerpo
+├── DiseaseList.vue         ← Listado de enfermedades
+├── MethodSelector.vue      ← Selector de métodos
+└── index.ts                ← Exportaciones centralizadas
+```
+
+## Tipos de listados en PathSys
+
+### Listado de Entidades
+
+<img 
+  src="/img/Captures/ListadoEntidades.png" 
+  alt="Listado de entidades de salud" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Listado de Entidades:</strong> Permite buscar y seleccionar instituciones de salud como Hospital Alma Máter, TEM, LIME, Clínica CES, etc.
+</div>
+
+**Características del listado de entidades:**
+- **Búsqueda por texto**: Campo de entrada para buscar por nombre
+- **Lista desplegable**: Muestra opciones disponibles
+- **Información detallada**: Nombre completo y código de la entidad
+- **Selección única**: Solo se puede seleccionar una entidad
+
+### Listado de Municipios
+
+<img 
+  src="/img/Captures/ListadoMunicipios.png" 
+  alt="Listado de municipios" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Listado de Municipios:</strong> Permite buscar y seleccionar municipios con información de región y código postal.
+</div>
+
+**Características del listado de municipios:**
+- **Búsqueda geográfica**: Por nombre de municipio
+- **Información regional**: Muestra la región a la que pertenece
+- **Código postal**: Incluye el código de identificación
+- **Organización territorial**: Estructura por departamentos y regiones
+
+### Listado de Patólogos
+
+<img 
+  src="/img/Captures/ListadoPatologos.png" 
+  alt="Listado de patólogos" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Listado de Patólogos:</strong> Permite buscar y seleccionar patólogos disponibles con su código y nombre completo.
+</div>
+
+**Características del listado de patólogos:**
+- **Búsqueda por nombre**: Campo para buscar patólogos
+- **Código identificador**: Muestra el código único del patólogo
+- **Nombre completo**: Información completa del profesional
+- **Selección profesional**: Para asignar casos a patólogos específicos
+
+### Listado de Pruebas
+
+<img 
+  src="/img/Captures/ListadoPruebas.png" 
+  alt="Listado de pruebas médicas" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Listado de Pruebas:</strong> Permite buscar y seleccionar pruebas médicas con información detallada como duración y descripción.
+</div>
+
+**Características del listado de pruebas:**
+- **Búsqueda por tipo**: Campo para buscar pruebas específicas
+- **Información detallada**: Nombre, código, duración y descripción
+- **Categorización**: Organizadas por tipo de prueba
+- **Selección técnica**: Para asignar pruebas a casos
+
+### Listado de Regiones del Cuerpo
+
+<img 
+  src="/img/Captures/ListadoRegionDelCuerpo.png" 
+  alt="Listado de regiones del cuerpo" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Listado de Regiones del Cuerpo:</strong> Permite buscar y seleccionar regiones anatómicas organizadas por sistemas del cuerpo.
+</div>
+
+**Características del listado de regiones:**
+- **Búsqueda anatómica**: Por nombre de región del cuerpo
+- **Organización jerárquica**: Por sistemas (Sistema Nervioso Central, etc.)
+- **Especificidad anatómica**: Desde órganos generales hasta estructuras específicas
+- **Clasificación médica**: Estructura estándar de anatomía
+
+## Funcionalidades comunes de los listados
+
+### Búsqueda en tiempo real
+
+Todos los listados incluyen funcionalidad de búsqueda:
+
+- **Filtrado instantáneo**: Los resultados se filtran mientras se escribe
+- **Búsqueda por múltiples campos**: Nombre, código, descripción
+- **Resultados relevantes**: Prioriza coincidencias exactas
+- **Sin resultados**: Mensaje claro cuando no se encuentran elementos
+
+### Estados de carga
+
+Los listados manejan diferentes estados:
+
+- **Cargando**: Spinner mientras se obtienen los datos
+- **Con datos**: Lista poblada con opciones
+- **Sin datos**: Mensaje cuando no hay elementos disponibles
+- **Error**: Indicación cuando ocurre un problema
+
+### Validación y selección
+
+- **Campo requerido**: Indicador visual con asterisco (*)
+- **Validación en tiempo real**: Feedback inmediato sobre selección
+- **Estado de selección**: Visualización clara del elemento seleccionado
+- **Limpieza de selección**: Opción para deseleccionar
+
+## Ejemplo de uso de un listado
+
+<CodeBlock language="vue">{`<template>
+  <div class="space-y-4">
+    <!-- Listado de Entidades -->
+    <EntityList
+      v-model="selectedEntity"
+      label="Entidad de Salud"
+      :required="true"
+      :error="entityError"
+      placeholder="Buscar y seleccionar entidad..."
+      @change="handleEntityChange"
+    />
+
+    <!-- Listado de Patólogos -->
+    <PathologistList
+      v-model="selectedPathologist"
+      label="Patólogo Asignado"
+      :required="true"
+      :error="pathologistError"
+      placeholder="Buscar y seleccionar patólogo..."
+      @change="handlePathologistChange"
+    />
+
+    <!-- Listado de Pruebas -->
+    <TestList
+      v-model="selectedTests"
+      label="Pruebas a Realizar"
+      :multiple="true"
+      placeholder="Buscar y seleccionar pruebas..."
+      @change="handleTestsChange"
+    />
+
+    <!-- Listado de Municipios -->
+    <MunicipalityList
+      v-model="selectedMunicipality"
+      label="Municipio"
+      placeholder="Buscar y seleccionar municipio..."
+      @change="handleMunicipalityChange"
+    />
+
+    <!-- Listado de Regiones del Cuerpo -->
+    <BodyRegionList
+      v-model="selectedBodyRegion"
+      label="Región del Cuerpo"
+      :required="true"
+      placeholder="Buscar región del cuerpo..."
+      @change="handleBodyRegionChange"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { 
+  EntityList, 
+  PathologistList, 
+  TestList, 
+  MunicipalityList, 
+  BodyRegionList 
+} from '@/shared/components/ui/lists'
+
+// Estados de selección
+const selectedEntity = ref('')
+const selectedPathologist = ref('')
+const selectedTests = ref([])
+const selectedMunicipality = ref('')
+const selectedBodyRegion = ref('')
+
+// Estados de error
+const entityError = ref('')
+const pathologistError = ref('')
+
+// Manejadores de cambio
+const handleEntityChange = (entity: any) => {
+  console.log('Entidad seleccionada:', entity)
+  entityError.value = ''
+}
+
+const handlePathologistChange = (pathologist: any) => {
+  console.log('Patólogo seleccionado:', pathologist)
+  pathologistError.value = ''
+}
+
+const handleTestsChange = (tests: any[]) => {
+  console.log('Pruebas seleccionadas:', tests)
+}
+
+const handleMunicipalityChange = (municipality: any) => {
+  console.log('Municipio seleccionado:', municipality)
+}
+
+const handleBodyRegionChange = (region: any) => {
+  console.log('Región del cuerpo seleccionada:', region)
+}
+
+// Validación
+const validateForm = () => {
+  entityError.value = !selectedEntity.value ? 'La entidad es requerida' : ''
+  pathologistError.value = !selectedPathologist.value ? 'El patólogo es requerido' : ''
+  
+  return !entityError.value && !pathologistError.value
+}
+</script>`}</CodeBlock>
+
+## Mejores prácticas en listados
+
+### Organización y estructura
+
+- **Jerarquía lógica**: Organizar elementos de general a específico
+- **Agrupación temática**: Agrupar elementos relacionados
+- **Orden alfabético**: Facilitar la búsqueda manual
+- **Información relevante**: Mostrar datos útiles para la selección
+
+### Experiencia de usuario
+
+- **Búsqueda intuitiva**: Placeholders descriptivos y útiles
+- **Resultados claros**: Información suficiente para tomar decisiones
+- **Feedback visual**: Estados de carga, error y éxito
+- **Accesibilidad**: Navegación por teclado y lectores de pantalla
+
+### Rendimiento
+
+- **Carga bajo demanda**: Solo cargar datos cuando sea necesario
+- **Filtrado eficiente**: Optimizar búsquedas en grandes listas
+- **Cache de resultados**: Evitar recargas innecesarias
+- **Paginación**: Para listas muy extensas
+
+### Validación y consistencia
+
+- **Campos requeridos**: Indicadores claros de obligatoriedad
+- **Validación en tiempo real**: Feedback inmediato
+- **Mensajes de error**: Descriptivos y accionables
+- **Consistencia visual**: Mismo comportamiento en todos los listados
+
+Esta estructura de listados asegura que los usuarios de PathSys puedan seleccionar información de manera eficiente, clara y consistente en todo el sistema.

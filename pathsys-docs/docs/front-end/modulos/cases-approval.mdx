@@ -1,0 +1,269 @@
+---
+id: front-end-modulo-cases-approval
+title: Cases Approval - Gestión de Solicitudes
+sidebar_position: 9
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es el módulo Cases Approval?
+
+El **módulo Cases Approval** gestiona el flujo completo de aprobación de solicitudes de pruebas complementarias: desde la solicitud inicial hasta la aprobación/rechazo por parte del coordinador. Permite revisar, aprobar y rechazar solicitudes, así como crear nuevos casos cuando se aprueban las pruebas complementarias.
+
+## Arquitectura
+
+```
+modules/cases-approval/
+├── components/
+│   ├── CasesToApproveList.vue         ← Lista de solicitudes pendientes
+│   └── CaseApprovalDetailsModal.vue   ← Modal con detalles de solicitud
+├── composables/
+│   ├── useApprovalActions.ts          ← Acciones (aprobar, rechazar, gestionar)
+│   ├── useApprovalFilters.ts          ← Filtros de búsqueda y estado
+│   ├── useApprovalPagination.ts       ← Paginación de resultados
+│   └── useApprovalOperations.ts       ← Estados de operaciones en progreso
+├── services/
+│   ├── casesApproval.service.ts       ← Servicios del módulo
+│   └── approval.adapter.ts            ← Adaptador de datos backend→frontend
+├── types/
+│   └── cases-approval.types.ts        ← Tipos específicos del módulo
+├── views/
+│   └── CasesToApproveView.vue         ← Vista principal del módulo
+└── routes/
+    └── casesApprovalRoutes.ts         ← Rutas del módulo
+```
+
+## Flujo de Solicitud de Pruebas Complementarias
+
+### 1. Solicitud desde el módulo Results
+
+<img src="/img/Captures/SolicitudPruebasComplementarias.png" alt="Formulario de solicitud de pruebas complementarias" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Formulario que permite solicitar pruebas complementarias adicionales para completar un diagnóstico.
+</div>
+
+**Componentes del formulario:**
+- **Checkbox de activación**: Habilita/deshabilita la solicitud
+- **Selector de pruebas**: Dropdown con catálogo de pruebas disponibles
+- **Cantidad**: Input numérico para especificar cuántas pruebas
+- **Motivo**: Textarea obligatorio explicando la necesidad
+- **Botón "Agregar Prueba"**: Permite múltiples pruebas por solicitud
+
+**Datos enviados al backend:**
+<CodeBlock language="typescript">
+{`POST /cases/{case_code}/complementary-tests/requests
+{
+  items: [
+    { test_id: '898301', quantity: 2 },
+    { test_id: 'PM-FETO-PL', quantity: 4 }
+  ],
+  reason: 'Se requieren estudios complementarios para completar el diagnóstico.'
+}`}
+</CodeBlock>
+
+**Respuesta del backend:**
+<CodeBlock language="typescript">
+{`{
+  request_id: 'REQ-2025-0001',
+  case_code: '2025-05022',
+  status: 'request_made',
+  created_at: '2025-10-08T12:00:00Z'
+}`}
+</CodeBlock>
+
+### 2. Lista de Solicitudes Pendientes
+
+**Estados del flujo:**
+- `request_made`: Solicitud creada, esperando revisión
+- `pending_approval`: En revisión por el coordinador
+- `approved`: Aprobada, se creó nuevo caso
+- `rejected`: Rechazada por el coordinador
+
+## Componentes del módulo
+
+### CasesToApproveList.vue
+
+Lista principal que muestra todas las solicitudes con sus respectivos estados y acciones disponibles.
+
+**Estructura de cada tarjeta de solicitud:**
+- **Información básica**: Código de caso, fecha, estado
+- **Datos del paciente**: Nombre y entidad
+- **Patólogo asignado**: Responsable de la solicitud
+- **Pruebas solicitadas**: Lista de pruebas complementarias
+- **Motivo**: Justificación de la solicitud
+
+**Botones de acción por estado:**
+- **"Ver Detalles"**: Siempre disponible (azul)
+- **"Revisar"**: Solo en estado `request_made` (naranja)
+- **"Aprobar"**: Solo en estado `pending_approval` (verde)
+- **"Rechazar"**: En estados `request_made` y `pending_approval` (rojo)
+
+## Composables principales
+
+### useApprovalActions.ts
+
+Gestiona las acciones principales del flujo de aprobación:
+
+<CodeBlock language="typescript">
+{`export function useApprovalActions() {
+  const manageRequest = async (approvalCode: string) => {
+    // Cambia estado de 'request_made' a 'pending_approval'
+    const result = await approvalService.manageApprovalRequest(approvalCode)
+    return result
+  }
+
+  const approveRequest = async (approvalCode: string) => {
+    // Aprueba la solicitud y crea nuevo caso
+    const result = await approvalService.approveRequest(approvalCode)
+    return result
+  }
+
+  const rejectRequest = async (approvalCode: string) => {
+    // Rechaza la solicitud
+    const result = await approvalService.rejectRequest(approvalCode)
+    return result
+  }
+}`}
+</CodeBlock>
+
+### useApprovalOperations.ts
+
+Controla los estados de operaciones en progreso para evitar acciones duplicadas:
+
+<CodeBlock language="typescript">
+{`type OperationType = 'approving' | 'rejecting' | 'managing'
+
+export function useApprovalOperations() {
+  const operations = ref<Map<string, OperationType>>(new Map())
+  
+  const startOperation = (id: string, type: OperationType) => {
+    operations.value.set(id, type)
+  }
+  
+  const isOperating = (id: string): boolean => {
+    return operations.value.has(id)
+  }
+}`}
+</CodeBlock>
+
+### useApprovalFilters.ts
+
+Gestiona los filtros de búsqueda y estado:
+
+<CodeBlock language="typescript">
+{`export function useApprovalFilters() {
+  const searchTerm = ref('')
+  const selectedStatus = ref<ApprovalState | ''>('')
+  
+  const resetFilters = () => {
+    searchTerm.value = ''
+    selectedStatus.value = ''
+  }
+}`}
+</CodeBlock>
+
+## Servicios y adaptadores
+
+### approval.adapter.ts
+
+Convierte los datos del backend al formato esperado por la UI:
+
+<CodeBlock language="typescript">
+{`export interface CaseToApproveViewModel {
+  id: string
+  approvalCode: string
+  caseCode: string
+  patientName: string
+  pathologistName: string
+  status: ApprovalState
+  complementaryTests: ComplementaryTestInfo[]
+  // Estados de operación para UI
+  approving?: boolean
+  rejecting?: boolean
+  managing?: boolean
+}
+
+export class ApprovalAdapter {
+  static toViewModel(dto: ApprovalRequestResponse): CaseToApproveViewModel {
+    return {
+      id: dto.id,
+      approvalCode: dto.approval_code,
+      caseCode: dto.original_case_code,
+      patientName: 'Caso ' + dto.original_case_code,
+      pathologistName: dto.approval_info?.assigned_pathologist?.name || 'Sin asignar',
+      status: dto.approval_state,
+      complementaryTests: dto.complementary_tests || []
+    }
+  }
+}`}
+</CodeBlock>
+
+## Flujo de datos completo
+
+### 1. Carga inicial de solicitudes
+
+<CodeBlock language="typescript">
+{`// GET /approval-requests
+const response = await approvalService.getApprovalRequests(filters)
+const viewModels = ApprovalAdapter.toViewModelList(response.data)
+cases.value = viewModels`}
+</CodeBlock>
+
+### 2. Gestión de solicitud (Revisar)
+
+<CodeBlock language="typescript">
+{`// POST /approval-requests/{code}/manage
+const result = await approvalService.manageApprovalRequest(approvalCode)
+// Estado cambia: 'request_made' → 'pending_approval'`}
+</CodeBlock>
+
+### 3. Aprobación de solicitud
+
+<CodeBlock language="typescript">
+{`// POST /approval-requests/{code}/approve
+const result = await approvalService.approveRequest(approvalCode)
+// Estado cambia: 'pending_approval' → 'approved'
+// Se crea nuevo caso con las pruebas complementarias`}
+</CodeBlock>
+
+### 4. Rechazo de solicitud
+
+<CodeBlock language="typescript">
+{`// POST /approval-requests/{code}/reject
+const result = await approvalService.rejectRequest(approvalCode)
+// Estado cambia: 'pending_approval' → 'rejected'`}
+</CodeBlock>
+
+## Validaciones y reglas de negocio
+
+- **Solo administradores** pueden acceder al módulo (rol `admin`)
+- **Una solicitud por caso**: No se pueden crear múltiples solicitudes para el mismo caso
+- **Estados secuenciales**: `request_made` → `pending_approval` → `approved`/`rejected`
+- **Operaciones atómicas**: Solo una operación por solicitud a la vez
+- **Feedback inmediato**: Notificaciones de éxito/error para todas las acciones
+
+## Rutas
+
+<CodeBlock language="typescript">
+{`export const casesApprovalRoutes: RouteRecordRaw[] = [
+  {
+    path: '/cases/to-approve',
+    name: 'cases-approval.list',
+    component: () => import('../views/CasesToApproveView.vue'),
+    meta: {
+      title: 'Casos por Aprobar',
+      requiresAuth: true,
+      requiresRole: ['admin']
+    }
+  }
+]`}
+</CodeBlock>
+
+## Integración con otros módulos
+
+- **Results**: Origen de las solicitudes de pruebas complementarias
+- **Cases**: Destino de los nuevos casos cuando se aprueban las solicitudes
+- **Dashboard**: Muestra métricas de solicitudes pendientes
+- **Shared Services**: Utiliza `approval.service` para comunicación con backend
+
+Este módulo es fundamental para mantener el control de calidad y la gestión eficiente de recursos en el sistema, asegurando que todas las pruebas complementarias sean aprobadas antes de su ejecución.

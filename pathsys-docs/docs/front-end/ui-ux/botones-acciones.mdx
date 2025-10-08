@@ -1,0 +1,193 @@
+---
+id: botones-acciones
+title: Botones y acciones
+sidebar_position: 3.2
+---
+
+## ¿Qué son los botones y acciones?
+
+Los **botones** son elementos interactivos que permiten a los usuarios realizar acciones específicas dentro del sistema. En PathSys, los botones están diseñados para ser claros, accesibles y seguir un sistema de diseño consistente que comunique inmediatamente su función al usuario.
+
+## Construcción de botones
+
+Todos los botones en PathSys se construyen a partir de un **botón base** que establece las características comunes:
+
+### Elementos fundamentales del botón base
+
+- **Contenedor rectangular**: Forma básica con esquinas redondeadas
+- **Padding interno**: Espacio entre el borde y el contenido
+- **Tipografía consistente**: Fuente, tamaño y peso estándar
+- **Estados de interacción**: Normal, hover, activo, deshabilitado
+- **Transiciones suaves**: Cambios graduales entre estados
+
+### Estructura del botón base
+
+```
+┌─────────────────────────┐
+│  [Icono] + [Texto]      │  ← Contenido
+└─────────────────────────┘
+     ↑
+   Contenedor
+```
+
+**Componentes del contenido:**
+- **Icono opcional**: Representación visual de la acción
+- **Texto descriptivo**: Nombre claro de la acción
+- **Espaciado**: Separación consistente entre icono y texto
+
+### Variaciones del botón base
+
+A partir del botón base, se crean las diferentes variantes cambiando solo los colores y estilos:
+
+- **Botón primario**: Fondo azul sólido + texto blanco
+- **Botón secundario**: Fondo blanco + borde gris + texto gris
+- **Botón terciario**: Solo texto con hover sutil
+
+## Ubicación de los botones en el código
+
+Los botones en PathSys están organizados en una estructura modular dentro del Front-End:
+
+### Estructura de archivos
+
+```
+Front-End/src/shared/components/ui/buttons/
+├── BaseButton.vue          ← Botón base con todas las variantes
+├── ActionButton.vue        ← Botón genérico para acciones
+├── SearchButton.vue        ← Botón específico de búsqueda
+├── SaveButton.vue          ← Botón para guardar datos
+├── ClearButton.vue         ← Botón para limpiar formularios
+├── AddButton.vue           ← Botón para agregar elementos
+├── RemoveButton.vue        ← Botón para eliminar elementos
+├── CloseButton.vue         ← Botón para cerrar modales
+├── PrintPdfButton.vue      ← Botón para imprimir PDFs
+└── index.ts                ← Exportaciones centralizadas
+```
+
+### Componente BaseButton
+
+El **BaseButton.vue** es el componente fundamental que implementa el concepto de botón base:
+
+**Características principales:**
+- **Variantes**: primary, secondary, success, danger, warning, ghost, outline
+- **Tamaños**: xs, sm, md, lg, xl
+- **Estados**: normal, loading, disabled
+- **Slots**: icon-left, icon-right, contenido personalizado
+
+**Ejemplo de uso:**
+```vue
+<BaseButton 
+  variant="primary" 
+  size="md" 
+  :loading="isLoading"
+  @click="handleAction"
+>
+  Guardar
+</BaseButton>
+```
+
+### Componentes especializados
+
+Cada botón especializado extiende el BaseButton con funcionalidades específicas:
+
+- **SearchButton**: Incluye icono de lupa y estados de búsqueda
+- **SaveButton**: Optimizado para operaciones de guardado
+- **ClearButton**: Especializado en limpiar formularios
+- **PrintPdfButton**: Incluye lógica de generación de PDFs
+
+### Importación centralizada
+
+El archivo `index.ts` permite importar todos los botones desde un solo punto:
+
+```typescript
+// Importar botones individuales
+import { BaseButton, SearchButton, SaveButton } from '@/shared/components/ui/buttons'
+
+// O importar el botón base para casos genéricos
+import BaseButton from '@/shared/components/ui/buttons/BaseButton.vue'
+```
+
+**¿Por qué esta organización?**
+- **Reutilización**: Componentes especializados para casos específicos
+- **Mantenimiento**: Cambios centralizados en BaseButton
+- **Consistencia**: Todos los botones siguen el mismo patrón
+- **Escalabilidad**: Fácil agregar nuevos tipos de botones
+
+## Tipos de botones
+
+### Botones primarios
+
+<img 
+  src="/img/Captures/BotonBuscar.png" 
+  alt="Botón primario de búsqueda" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '200px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Botón primario:</strong> Color azul sólido con texto blanco. Acción principal como "Buscar".
+</div>
+
+Los botones primarios son para las acciones más importantes:
+
+- **Color azul sólido**: Acciones principales como "Buscar", "Guardar", "Aprobar"
+- **Texto blanco**: Alto contraste para fácil lectura
+- **Uso limitado**: Solo uno por página para evitar confusión
+
+
+### Botones secundarios
+
+<img 
+  src="/img/Captures/BotonLimpiar.png" 
+  alt="Botón secundario de limpiar" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '200px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Botón secundario:</strong> Fondo blanco con borde y texto gris. Acciones de apoyo como "Limpiar".
+</div>
+
+Los botones secundarios son para acciones importantes pero no críticas:
+
+- **Fondo blanco con borde**: Acciones como "Limpiar", "Cancelar", "Volver"
+- **Menos prominentes**: No compiten con la acción principal
+- **Uso múltiple**: Pueden aparecer varios en la misma página
+
+### Conjunto de botones de acción
+
+<img 
+  src="/img/Captures/BotonesTablas.png" 
+  alt="Conjunto de botones para tablas" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '600px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Conjunto de botones:</strong> Múltiples acciones relacionadas: Limpiar, Exportar a Excel, Actualizar y Buscar.
+</div>
+
+Este conjunto muestra cómo se organizan múltiples acciones relacionadas:
+
+- **"Limpiar"**: Resetea filtros y formularios (secundario)
+- **"Exportar a Excel"**: Descarga datos en formato Excel (secundario)
+- **"Actualizar"**: Refresca la información actual (secundario)
+- **"Buscar"**: Ejecuta la búsqueda principal (primario)
+
+**¿Por qué esta organización?**
+- **Jerarquía visual**: El botón primario (Buscar) destaca sobre los secundarios
+- **Agrupación lógica**: Todas las acciones están relacionadas con la gestión de datos
+- **Flujo de trabajo**: Secuencia natural: Limpiar → Configurar → Actualizar → Buscar
+
+## Estados de los botones
+
+### Estados básicos
+
+Los botones en PathSys tienen diferentes estados para comunicar su disponibilidad:
+
+- **Normal**: Listo para usar, colores estándar
+- **Hover**: Cambio sutil de color al pasar el mouse
+- **Activo**: Feedback inmediato al hacer clic
+- **Deshabilitado**: Apariencia atenuada cuando no está disponible
+
+**¿Cuándo deshabilitar botones?**
+- Formularios incompletos o inválidos
+- Operaciones en progreso
+- Permisos insuficientes del usuario
+

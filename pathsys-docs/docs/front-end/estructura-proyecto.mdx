@@ -1,0 +1,169 @@
+---
+id: front-end-estructura
+title: Estructura Front-End
+sidebar_position: 2
+---
+
+import CodeBlock from '@theme/CodeBlock'
+
+## Objetivo y organización de carpetas
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  Esta sección detalla la arquitectura del Front-End de PathSys, incluyendo la organización de módulos, componentes, servicios y utilidades. Aquí encontrarás cómo está estructurado el código Vue 3, las convenciones de nomenclatura, patrones de diseño implementados y la relación entre diferentes capas de la aplicación.
+</div>
+
+## Estructura a alto nivel
+
+<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>src/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Raíz del código de la aplicación: punto de entrada, componentes de alto nivel y registros de plugins.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>modules/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Módulos por dominio funcional (auth, dashboard, cases, patients, results, reports, etc.).</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>shared/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Biblioteca compartida: componentes reutilizables, layouts, iconos, composables y utilidades comunes.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>stores/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Estado global con Pinia (autenticación, configuraciones, bandejas y datos compartidos).</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>router/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Definición de rutas, lazy-loading de vistas y guards por autenticación/roles.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>assets/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Estilos base, fuentes e imágenes. Diseño utilitario con Tailwind CSS.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>composables/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Lógica reutilizable de vistas: validaciones, manejo de formularios y flujos comunes.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>utils/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Funciones auxiliares (debug, normalización de respuestas, tests helpers y utilidades varias).</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>styles/</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Tokens de diseño, configuraciones de Tailwind y estilos globales.</div>
+  </div>
+</div>
+
+## Convenciones de organización dentro de cada módulo
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  <ul style={{margin: 0, paddingLeft: 18}}>
+    <li><strong>routes/</strong>: definición de rutas del módulo (lazy-loaded) y metadatos para guards.</li>
+    <li><strong>views/</strong>: páginas principales del módulo (listas, detalle, formularios).</li>
+    <li><strong>components/</strong>: componentes específicos del módulo (no globales).</li>
+    <li><strong>store/</strong>: estado local del módulo cuando aplica; global en <code>src/stores</code>.</li>
+    <li><strong>services/</strong>: llamadas HTTP del módulo (normalización y manejo de errores).</li>
+    <li><strong>composables/</strong>: hooks de composición para lógica compartida entre vistas del módulo.</li>
+  </ul>
+</div>
+
+## Ejemplos prácticos
+
+<div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Router y guards</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Rutas con metadatos para autenticación y roles.</div>
+
+    <CodeBlock language="ts">{`// Example route definition with auth and role-based meta (English comments)
+export default [
+  {
+    path: '/cases',
+    name: 'cases.list',
+    component: () => import('@/modules/cases/views/CasesList.vue'),
+    meta: { requiresAuth: true, roles: ['PATHOLOGIST', 'RESIDENT'] },
+  },
+]
+`}</CodeBlock>
+  </div>
+
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Store global con Pinia</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Patrón de estado global tipado.</div>
+
+    <CodeBlock language="ts">{`// Minimal Pinia store example (English comments)
+import { defineStore } from 'pinia'
+
+export const useAuthStore = defineStore('auth', {
+  state: () => ({ token: null as string | null, user: null as any }),
+  getters: {
+    isAuthenticated: (state) => !!state.token,
+  },
+  actions: {
+    setToken(token: string) { this.token = token },
+    logout() { this.token = null; this.user = null },
+  },
+})
+`}</CodeBlock>
+  </div>
+
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Composables</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Hooks reutilizables con nomenclatura <code>useX</code>.</div>
+
+    <CodeBlock language="ts">{`// Sample composable (English comments)
+import { ref } from 'vue'
+
+export function useAsyncTask<T>(task: () => Promise<T>) {
+  const loading = ref(false)
+  const error = ref<Error | null>(null)
+  const result = ref<T | null>(null)
+
+  async function run() {
+    loading.value = true
+    error.value = null
+    try {
+      result.value = await task()
+    } catch (e) {
+      error.value = e as Error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { loading, error, result, run }
+}
+`}</CodeBlock>
+  </div>
+</div>
+
+## Buenas prácticas y convenciones
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  <ul style={{margin: 0, paddingLeft: 18}}>
+    <li><strong>Alias</strong>: usar <code>@</code> para importar desde <code>src</code>.</li>
+    <li><strong>Nomenclatura de rutas</strong>: <code>modulo.recurso.accion</code> (ej. <code>cases.list</code>, <code>cases.detail</code>).</li>
+    <li><strong>Lazy loading</strong> de vistas en rutas para mejorar performance.</li>
+    <li><strong>Stores</strong> con nombres claros (<code>auth</code>, <code>cases</code>) y estados mínimos necesarios.</li>
+    <li><strong>Servicios</strong>: centralizar interceptores y manejo de errores; normalizar respuestas.</li>
+    <li><strong>UI compartida</strong>: preferir <code>shared/</code> para componentes genéricos y consistentes.</li>
+  </ul>
+</div>
+
+## Convenciones de idioma y estilo
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  <ul style={{margin: 0, paddingLeft: 18}}>
+    <li>Contenido visible para el usuario en español.</li>
+    <li>Código y comentarios en ejemplos en inglés.</li>
+    <li>Diseño utilitario con Tailwind y componentes reutilizables en <code>shared/</code>.</li>
+  </ul>
+</div>
+
+## Próximos pasos
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  <ul style={{margin: 0, paddingLeft: 18}}>
+    <li>Profundizar en “Arquitectura UI” para entender layouts y flujo de datos.</li>
+    <li>Revisar “Routing y guards” para protección por autenticación y roles.</li>
+    <li>Consultar “Estado y persistencia” para patrones de Pinia y manejo de sesión.</li>
+  </ul>
+</div>

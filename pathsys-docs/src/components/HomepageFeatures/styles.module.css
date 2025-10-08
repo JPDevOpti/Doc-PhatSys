@@ -1,0 +1,185 @@
+/* Component-specific styles for HomepageFeatures. All comments are in English as requested. */
+
+.features {
+  display: flex;
+  align-items: center;
+  padding: 3.5rem 0;
+  width: 100%;
+}
+
+/* Dedicated row spacing class for explicit feature rows */
+.featureRow {
+  margin-bottom: 4rem; /* increased space between rows of cards */
+}
+
+.featureRow:last-child {
+  margin-bottom: 0;
+}
+
+/* Feature icon - green stroke only, no fill */
+.featureSvg {
+  height: 80px;
+  width: 80px;
+  margin: 0 auto 1.25rem auto;
+  display: block;
+  color: #22c55e;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.featureSvg:hover {
+  transform: translateY(-2px);
+  color: #16a34a;
+}
+
+/* Force all paths to use stroke only */
+.featureSvg :global(path),
+.featureSvg :global(circle),
+.featureSvg :global(rect),
+.featureSvg :global(polygon),
+.featureSvg :global(line) {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Card layout for each feature */
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb; /* neutral border */
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 1.75rem 1.5rem 2rem 1.5rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  margin-bottom: 1.5rem; /* spacing between cards in same row */
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(46, 133, 85, 0.16);
+}
+
+.cardBody {
+  padding: 0 0.5rem;
+}
+
+.cardTitle {
+  margin: 0.75rem 0 1rem 0;
+  color: var(--ifm-color-primary-dark);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.cardText {
+  color: #4b5563; /* better readability */
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+/* Tech stack section */
+.techStack {
+  padding: 4rem 0;
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
+  border-top: 1px solid #e5e7eb;
+}
+
+.techDescription {
+  font-size: 1.06rem;
+  color: #475569;
+  max-width: 680px;
+  margin: 0 auto 2rem auto;
+}
+
+.techCard {
+  padding: 2rem 1.75rem 2.25rem 1.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  margin-bottom: 2rem; /* increased vertical spacing between cards */
+  margin-left: 0.75rem; /* horizontal spacing between cards */
+  margin-right: 0.75rem; /* horizontal spacing between cards */
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+  width: calc(100% - 1.5rem); /* adjust width to account for margins */
+  max-width: 350px; /* limit maximum width for better text readability */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Add spacing between columns within the tech stack row */
+.techRow {
+  /* Increase horizontal gutters between columns in the tech stack row */
+  --ifm-row-gutter: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+/* Individual tech card columns */
+.techRow .col {
+  flex: 0 1 auto;
+  max-width: 350px;
+  width: 100%;
+}
+
+.techCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(46, 133, 85, 0.16);
+}
+
+/* Tech card text styling */
+.techCard h3 {
+  margin: 1rem 0 1.25rem 0;
+  color: var(--ifm-color-primary-dark);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.techCard p {
+  margin: 0.5rem 0;
+  color: #4b5563;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.techCard p:last-child {
+  margin-bottom: 0;
+}
+
+/* Tech stack icons - green stroke only, no fill */
+.techIcon {
+  height: 80px;
+  width: 80px;
+  margin: 0 auto 1rem auto;
+  display: block;
+  color: #22c55e;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.techIcon:hover {
+  transform: translateY(-2px);
+  color: #16a34a;
+}
+
+/* Force all paths in tech icons to use stroke only */
+.techIcon :global(path),
+.techIcon :global(circle),
+.techIcon :global(rect),
+.techIcon :global(polygon),
+.techIcon :global(line),
+.techIcon :global(g) {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.5 !important;
+}

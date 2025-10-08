@@ -1,0 +1,259 @@
+---
+id: formularios
+title: Formularios
+sidebar_position: 3.4
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué son los formularios?
+
+Los **formularios** son interfaces que permiten a los usuarios ingresar, editar y enviar información al sistema. En PathSys, los formularios están diseñados para ser intuitivos, accesibles y proporcionar una experiencia consistente en toda la aplicación.
+
+### ¿Por qué son importantes?
+
+- **Captura de datos**: Permiten ingresar información de pacientes, casos y pruebas
+- **Validación en tiempo real**: Proporcionan feedback inmediato sobre errores
+- **Experiencia de usuario**: Guían al usuario en el proceso de llenado
+- **Consistencia**: Mantienen un diseño uniforme en toda la aplicación
+
+## Ubicación de los formularios en el código
+
+Los componentes de formularios en PathSys están organizados en una estructura modular:
+
+### Estructura de archivos
+
+```
+Front-End/src/shared/components/ui/forms/
+├── FormInput.vue              ← Campo de texto básico
+├── FormInputField.vue         ← Campo de texto con validación
+├── FormSelect.vue             ← Selector desplegable
+├── FormCheckbox.vue           ← Casillas de verificación
+├── FormTextarea.vue           ← Área de texto
+├── FormTextareaUnlimited.vue  ← Área de texto sin límite
+├── DateInputField.vue         ← Campo de fecha
+├── FormButton.vue             ← Botón de formulario
+├── RichTextEditor.vue         ← Editor de texto enriquecido
+└── index.ts                   ← Exportaciones centralizadas
+```
+
+## Tipos de campos de formulario
+
+### Campo de texto
+
+<img 
+  src="/img/Captures/CampoTexto.png" 
+  alt="Campo de texto de formulario" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Campo de texto:</strong> Input básico para nombres, identificaciones y datos alfanuméricos.
+</div>
+
+Los campos de texto son para ingresar información básica:
+
+- **Etiqueta clara**: Identifica qué información se debe ingresar
+- **Placeholder**: Proporciona ejemplo o instrucción
+- **Validación visual**: Borde rojo para errores, verde para éxito
+- **Iconos opcionales**: Para clarificar el tipo de dato
+
+**¿Cuándo usar campos de texto?**
+- Nombres y apellidos
+- Números de identificación
+- Direcciones y datos de contacto
+- Cualquier información alfanumérica
+
+**Ejemplo de uso:**
+<CodeBlock language="vue">{`<template>
+  <FormInput
+    v-model="patientName"
+    label="Nombre del paciente"
+    placeholder="Ingrese el nombre completo"
+    :required="true"
+    :error="nameError"
+    help-text="Ingrese nombre y apellidos"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { FormInput } from '@/shared/components/ui/forms'
+
+const patientName = ref('')
+const nameError = ref('')
+</script>`}</CodeBlock>
+
+### Campo selector
+
+<img 
+  src="/img/Captures/CampoSelector.png" 
+  alt="Campo selector de formulario" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Campo selector:</strong> Lista desplegable para seleccionar entre opciones predefinidas.
+</div>
+
+Los campos selector permiten elegir entre opciones específicas:
+
+- **Opciones predefinidas**: Lista de valores válidos
+- **Búsqueda**: Filtrado de opciones para listas largas
+- **Selección múltiple**: Opción de elegir varios valores
+- **Validación**: Asegura que se seleccione una opción válida
+
+**¿Cuándo usar campos selector?**
+- Selección de entidades o instituciones
+- Categorías y clasificaciones
+- Estados y tipos predefinidos
+- Cualquier lista de opciones limitadas
+
+**Ejemplo de uso:**
+<CodeBlock language="vue">{`<template>
+  <FormSelect
+    v-model="selectedEntity"
+    label="Entidad"
+    placeholder="Seleccione una entidad"
+    :options="entityOptions"
+    :required="true"
+    :error="entityError"
+    help-text="Seleccione la entidad de salud"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { FormSelect } from '@/shared/components/ui/forms'
+
+const selectedEntity = ref('')
+const entityError = ref('')
+const entityOptions = [
+  { value: 'eps-001', label: 'EPS Sanitas' },
+  { value: 'eps-002', label: 'EPS Sura' },
+  { value: 'eps-003', label: 'EPS Coomeva' }
+]
+</script>`}</CodeBlock>
+
+### Campo de fecha
+
+<img 
+  src="/img/Captures/CampoFecha.png" 
+  alt="Campo de fecha de formulario" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Campo de fecha:</strong> Selector de fecha con calendario para fechas de nacimiento, citas y eventos.
+</div>
+
+Los campos de fecha facilitan la selección de fechas:
+
+- **Selector de calendario**: Interfaz visual para elegir fechas
+- **Formatos estándar**: DD/MM/YYYY para consistencia
+- **Validación automática**: Verifica fechas válidas
+- **Restricciones**: Rango de fechas permitidas
+
+**¿Cuándo usar campos de fecha?**
+- Fechas de nacimiento
+- Fechas de citas médicas
+- Períodos de validez
+- Cualquier información temporal
+
+**Ejemplo de uso:**
+<CodeBlock language="vue">{`<template>
+  <DateInputField
+    v-model="birthDate"
+    label="Fecha de nacimiento"
+    placeholder="Seleccione la fecha"
+    :required="true"
+    :error="dateError"
+    help-text="DD/MM/YYYY"
+  />
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { DateInputField } from '@/shared/components/ui/forms'
+
+const birthDate = ref('')
+const dateError = ref('')
+</script>`}</CodeBlock>
+
+### Casillas de verificación
+
+<img 
+  src="/img/Captures/Checkbox.png" 
+  alt="Casillas de verificación" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '300px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Casillas de verificación:</strong> Para seleccionar múltiples opciones o confirmar condiciones.
+</div>
+
+Las casillas de verificación permiten selecciones múltiples:
+
+- **Selección múltiple**: Elegir varias opciones simultáneamente
+- **Estados binarios**: Sí/No, Activo/Inactivo
+- **Agrupación**: Múltiples opciones relacionadas
+- **Validación**: Al menos una opción seleccionada
+
+**¿Cuándo usar casillas de verificación?**
+- Síntomas o condiciones médicas
+- Servicios adicionales
+- Permisos y configuraciones
+- Cualquier selección múltiple
+
+**Ejemplo de uso:**
+<CodeBlock language="vue">{`<template>
+  <div class="space-y-3">
+    <label class="text-sm font-medium text-gray-700">
+      Síntomas presentes:
+    </label>
+    
+    <FormCheckbox
+      v-model="symptoms"
+      value="fever"
+      label="Fiebre"
+    />
+    
+    <FormCheckbox
+      v-model="symptoms"
+      value="cough"
+      label="Tos"
+    />
+    
+    <FormCheckbox
+      v-model="symptoms"
+      value="headache"
+      label="Dolor de cabeza"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+import { FormCheckbox } from '@/shared/components/ui/forms'
+
+const symptoms = ref([])
+</script>`}</CodeBlock>
+
+## Formulario completo
+
+<img 
+  src="/img/Captures/Formulario.png" 
+  alt="Formulario completo de PathSys" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '800px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Formulario completo:</strong> Ejemplo de formulario con diferentes tipos de campos organizados lógicamente.
+</div>
+
+
+
+
+
+
+

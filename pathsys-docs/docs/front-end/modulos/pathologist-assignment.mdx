@@ -1,0 +1,306 @@
+---
+id: front-end-modulo-pathologist-assignment
+title: Pathologist Assignment - Asignación de Patólogos
+sidebar_position: 5
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es el módulo Pathologist Assignment?
+
+El **módulo Pathologist Assignment** gestiona la asignación y reasignación de patólogos a casos médicos. Permite buscar casos por código, visualizar sus detalles y asignar o cambiar el patólogo responsable del análisis y diagnóstico.
+
+## Arquitectura
+
+```
+modules/pathologist-assignment/
+├── components/
+│   ├── PathologistAssignmentForm.vue    ← Formulario principal de asignación
+│   └── PathologistSelector.vue          ← Selector de patólogos
+├── composables/
+│   └── usePathologistAssignment.ts      ← Lógica de búsqueda y asignación
+├── types/
+│   └── index.ts                         ← Tipos específicos del módulo
+├── views/
+│   └── PathologistAssignmentView.vue    ← Vista principal del módulo
+└── routes/
+    └── pathologistAssignmentRoutes.ts   ← Rutas del módulo
+```
+
+## Lista de Casos por Aprobar
+
+<img src="/img/Captures/CasosPoraprobar.png" alt="Lista de solicitudes de pruebas complementarias" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Vista principal que muestra las solicitudes de pruebas complementarias pendientes de aprobación.
+</div>
+
+**Componentes de la interfaz:**
+- **Barra de búsqueda**: Filtro por código de caso
+- **Filtro de estado**: Dropdown para filtrar por estado de solicitud
+- **Tarjetas de solicitud**: Cada una muestra información del caso, pruebas solicitadas y acciones disponibles
+- **Botones de acción**: "Ver Detalles", "Revisar", "Rechazar" según el estado
+
+## Detalles del Caso
+
+<img src="/img/Captures/DetallesCasoPatologo.png" alt="Detalles del caso para asignación de patólogo" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Vista detallada del caso que muestra toda la información necesaria para la asignación de patólogo.
+</div>
+
+**Información mostrada:**
+- **Código del caso**: Identificador único (ej: 2025-05024)
+- **Datos del paciente**: Nombre, documento de identidad
+- **Patólogo actual**: Estado de asignación (Sin asignar/Asignado)
+- **Estado del caso**: Proceso actual (En proceso, Completado, etc.)
+- **Entidad**: Institución médica asociada
+- **Información adicional**: Prioridad, servicio, médico solicitante, tipo de atención
+- **Muestras**: Regiones del cuerpo y tipos de pruebas
+- **Observaciones**: Notas adicionales del caso
+
+## Funcionalidades principales
+
+### 1. Búsqueda de casos
+
+**Validación de formato:**
+<CodeBlock language="typescript">
+{`const isValidCodigoFormat = (codigo: string): boolean => {
+  if (!codigo || typeof codigo !== 'string' || codigo.trim() === '') return false
+  return /^\d{4}-\d{5}$/.test(codigo.trim())
+}`}
+</CodeBlock>
+
+**Búsqueda por código:**
+<CodeBlock language="typescript">
+{`const buscarCaso = async (codigoCaso: string): Promise<boolean> => {
+  if (!codigoCaso.trim()) {
+    searchError.value = 'Por favor, ingrese un código de caso'
+    return false
+  }
+  
+  if (!isValidCodigoFormat(codigoCaso)) {
+    searchError.value = 'El código debe tener el formato YYYY-NNNNN (Ejemplo: 2025-00001)'
+    return false
+  }
+
+  try {
+    const casoResponse = await casesApiService.getCaseByCode(codigoCaso.trim())
+    casoEncontrado.value = true
+    casoInfo.value = casoResponse
+    return true
+  } catch (error: any) {
+    // Manejo de errores específicos por tipo
+    if (message.includes('404')) {
+      searchError.value = 'No existe un caso con el código especificado'
+    } else if (message.includes('400')) {
+      searchError.value = 'Formato de código de caso inválido'
+    }
+    return false
+  }
+}`}
+</CodeBlock>
+
+### 2. Asignación de patólogo
+
+**Flujo de asignación:**
+<CodeBlock language="typescript">
+{`const asignarPatologo = async (
+  codigoCaso: string, 
+  assignmentData: PathologistAssignmentFormData
+): Promise<AssignmentResult> => {
+  // Validar que el caso no esté completado
+  if (isCaseCompleted(casoInfo.value)) {
+    return { success: false, message: 'No se puede asignar patólogo a un caso completado' }
+  }
+
+  try {
+    const tienePatologo = casoInfo.value?.assigned_pathologist?.id
+    
+    // Si ya tiene patólogo, desasignarlo primero
+    if (tienePatologo) {
+      await casesApiService.unassignPathologist(codigoCaso)
+    }
+
+    // Asignar nuevo patólogo
+    const pathologistData = {
+      codigo: assignmentData.patologoId,
+      nombre: '', // Se llenará desde la respuesta
+      fecha_asignacion: assignmentData.fechaAsignacion
+    }
+
+    const result = await casesApiService.assignPathologist(codigoCaso, pathologistData)
+    
+    return {
+      success: true,
+      message: 'Patólogo asignado exitosamente',
+      assignment: { pathologist: { id: assignmentData.patologoId } }
+    }
+  } catch (error: any) {
+    return { success: false, message: error.message }
+  }
+}`}
+</CodeBlock>
+
+### 3. Validaciones y restricciones
+
+**Casos que no pueden ser asignados:**
+- Casos completados o cerrados
+- Casos con estado "Por firmar" o "Firmado"
+- Casos que ya tienen un patólogo asignado (requiere reasignación)
+
+**Formato de código de caso:**
+- Debe seguir el patrón: `YYYY-NNNNN`
+- Ejemplo válido: `2025-05024`
+- Ejemplo inválido: `2025-5024` (falta un dígito)
+
+## Tipos de datos
+
+### PathologistAssignmentFormData
+
+<CodeBlock language="typescript">
+{`interface PathologistAssignmentFormData {
+  patologoId: string
+  fechaAsignacion: string
+}`}
+</CodeBlock>
+
+### CaseModel
+
+<CodeBlock language="typescript">
+{`interface CaseModel {
+  case_code?: string
+  caso_code?: string
+  state?: string
+  estado?: string
+  patient_info?: {
+    name?: string
+    patient_code?: string
+    entity_info?: {
+      name?: string
+      nombre?: string
+    }
+  }
+  assigned_pathologist?: {
+    id?: string
+    name?: string
+  }
+  samples?: Array<{
+    body_region?: string
+    region_cuerpo?: string
+  }>
+}`}
+</CodeBlock>
+
+### AssignmentResult
+
+<CodeBlock language="typescript">
+{`interface AssignmentResult {
+  success: boolean
+  message?: string
+  assignment?: {
+    pathologist?: {
+      id: string
+      patologo_code?: string
+      codigo?: string
+    }
+  }
+}`}
+</CodeBlock>
+
+## Flujo de datos completo
+
+### 1. Búsqueda de caso
+
+<CodeBlock language="typescript">
+{`// GET /cases/{case_code}
+const response = await casesApiService.getCaseByCode('2025-05024')
+// Respuesta incluye: datos del paciente, estado, patólogo actual, muestras`}
+</CodeBlock>
+
+### 2. Asignación de patólogo
+
+<CodeBlock language="typescript">
+{`// POST /cases/{case_code}/assign-pathologist
+const requestData = {
+  codigo: 'PATH001',
+  nombre: 'Dr. Juan Pérez',
+  fecha_asignacion: '2025-10-08'
+}
+const result = await casesApiService.assignPathologist('2025-05024', requestData)`}
+</CodeBlock>
+
+### 3. Reasignación (desasignar + asignar)
+
+<CodeBlock language="typescript">
+{`// 1. Desasignar patólogo actual
+await casesApiService.unassignPathologist('2025-05024')
+
+// 2. Asignar nuevo patólogo
+await casesApiService.assignPathologist('2025-05024', newPathologistData)`}
+</CodeBlock>
+
+## Manejo de errores
+
+**Tipos de errores manejados:**
+- **404**: Caso no encontrado
+- **400**: Formato de código inválido
+- **500**: Error interno del servidor
+- **Validación**: Casos completados, formato incorrecto
+- **Red**: Problemas de conectividad
+
+**Mensajes de error específicos:**
+- `"No existe un caso con el código especificado"`
+- `"Formato de código de caso inválido"`
+- `"No se puede asignar patólogo a un caso completado"`
+- `"Error interno del servidor. Inténtelo más tarde"`
+
+## Permisos y roles
+
+**Roles autorizados:**
+- **Administradores** (`admin`): Acceso completo
+- **Patólogos** (`pathologist`): Pueden ver y asignar casos
+
+**Validación de permisos:**
+<CodeBlock language="typescript">
+{`const { isAdmin } = usePermissions()
+const authStore = useAuthStore()
+
+// Verificar si el usuario tiene permisos para asignar patólogos
+const canAssignPathologist = isAdmin.value || authStore.userRole === 'pathologist'`}
+</CodeBlock>
+
+## Rutas
+
+<CodeBlock language="typescript">
+{`export const pathologistAssignmentRoutes: RouteRecordRaw[] = [
+  {
+    path: '/pathologist-assignment',
+    name: 'pathologist-assignment',
+    component: () => import('../views/PathologistAssignmentView.vue'),
+    meta: {
+      title: 'Asignación de Patólogos',
+      requiresAuth: true,
+      roles: ['admin', 'pathologist']
+    }
+  },
+  {
+    path: '/cases/assign-pathologists',
+    redirect: { name: 'pathologist-assignment' }
+  }
+]`}
+</CodeBlock>
+
+## Integración con otros módulos
+
+- **Cases**: Obtiene información de casos y actualiza asignaciones
+- **Auth**: Verifica permisos de usuario
+- **Shared Services**: Utiliza servicios compartidos para API calls
+- **Dashboard**: Muestra métricas de asignaciones pendientes
+
+## Estados del caso relevantes
+
+- **"En proceso"**: Puede ser asignado/reasignado
+- **"Completado"**: No puede ser modificado
+- **"Por firmar"**: Asignación bloqueada
+- **"Firmado"**: Caso finalizado
+
+Este módulo es esencial para la gestión eficiente de recursos humanos en el laboratorio, asegurando que cada caso tenga un patólogo responsable y que las asignaciones se realicen de manera ordenada y controlada.

@@ -1,0 +1,106 @@
+---
+id: front-end-modulo-patients
+title: Pacientes - Creación y Gestión
+sidebar_position: 3
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es el módulo Patients?
+
+El **módulo de Pacientes** permite registrar, consultar y actualizar la información de pacientes que serán vinculados a los casos. Incluye validación de datos, verificación de existencia y feedback posterior a la creación.
+
+## Arquitectura
+
+```
+modules/patients/
+├── components/
+│   ├── NewPatient.vue             ← Formulario de creación
+│   ├── EditPatient.vue            ← Formulario de edición
+│   └── index.ts
+├── composables/
+│   ├── usePatientForm.ts          ← Estado/validación del formulario
+│   ├── usePatientAPI.ts           ← Acceso a API/servicios
+│   └── useNotifications.ts        ← Notificaciones de UI
+├── services/
+│   └── patientsApi.service.ts     ← Endpoints (crear, listar, buscar, actualizar)
+├── types/
+│   ├── patient.ts                 ← Tipos (PatientData, PatientFormData, enums)
+│   └── api.ts
+├── views/
+│   ├── NewPatientView.vue
+│   └── EditPatientView.vue
+└── routes/
+    └── patientsRoutes.ts
+```
+
+## Formulario de Nuevo Paciente (NewPatient.vue)
+
+<img src="/img/Captures/NuevoPaciente.png" alt="Formulario de registro de nuevo paciente" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Formulario con secciones de identificación, información personal, atención, ubicación y observaciones.
+</div>
+
+### Subcomponentes y lógica usada
+- UI: `FormSelect`, `FormInput`, `DateInputField`, `FormTextarea`, `EntityList`.
+- Composable: `usePatientForm` (estado, validaciones, handlers de inputs) y `usePatientAPI`.
+- Servicio: `patientsApi.service.ts`.
+
+### Validación y normalización (usePatientForm)
+
+<CodeBlock language="typescript">{`// Campos obligatorios y reglas (extracto)
+const isFormValid = computed(() => form.identification_type && form.identification_number && form.first_name && form.first_lastname && form.birth_date && form.gender && form.municipality_code && form.municipality_name && form.subregion && form.address && form.entity_id && form.entity_name && form.care_type && // ... sin errores
+  errors.identification_type.length === 0 && errors.identification_number.length === 0 && errors.first_name.length === 0 && errors.first_lastname.length === 0 && errors.birth_date.length === 0 && errors.gender.length === 0 && errors.municipality_code.length === 0 && errors.municipality_name.length === 0 && errors.subregion.length === 0 && errors.address.length === 0 && errors.entity_id.length === 0 && errors.entity_name.length === 0 && errors.care_type.length === 0
+)`}</CodeBlock>
+
+### Envío al backend (createPatient)
+
+<CodeBlock language="typescript">{`// Request (CreatePatientRequest simplificado)
+POST /patients/
+{
+  identification_type: 'CC',
+  identification_number: '12345678',
+  first_name: 'Juan',
+  second_name: 'Carlos',
+  first_lastname: 'Pérez',
+  second_lastname: 'García',
+  birth_date: '1990-01-01',
+  gender: 'Masculino',
+  municipality_code: '05001',
+  municipality_name: 'MEDELLÍN',
+  subregion: 'Valle de Aburrá',
+  address: 'Calle 123',
+  entity_id: 'HAMA',
+  entity_name: 'Hospital Alma Máter de Antioquia',
+  care_type: 'Ambulatorio',
+  observations: ''
+}
+// Response (PatientData)
+{
+  patient_code: '1-12345678',
+  name: 'Juan Carlos Pérez García',
+  gender: 'Masculino',
+  age: 25,
+  entity: 'Hospital Alma Máter de Antioquia',
+  care_type: 'Ambulatorio',
+  created_at: '2025-10-08T11:55:00Z',
+  updated_at: '2025-10-08T11:55:00Z'
+}`}</CodeBlock>
+
+## Notificación de éxito
+
+<img src="/img/Captures/PacienteNuevoNotificacion.png" alt="Tarjeta de paciente registrado exitosamente" style={{border: '2px solid #e5e7eb', borderRadius: '12px', display: 'block', margin: '16px 0', maxWidth: '680px'}} />
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  Tarjeta de confirmación con los datos resumidos del paciente creado y opción de “Crear Caso” directamente.
+</div>
+
+### Manejo de errores
+
+- El servicio propaga el error original del backend para preservar `response.data.detail` y campos de validación: puede mostrarse en `useNotifications` o en el propio formulario.
+
+### Rutas
+
+<CodeBlock language="typescript">{`export const patientsRoutes = [
+  { path: '/patients/new', name: 'patients-new', component: () => import('../views/NewPatientView.vue'), meta: { requiresAuth: true } },
+  { path: '/patients/:code/edit', name: 'patients-edit', component: () => import('../views/EditPatientView.vue'), meta: { requiresAuth: true } }
+]`}</CodeBlock>

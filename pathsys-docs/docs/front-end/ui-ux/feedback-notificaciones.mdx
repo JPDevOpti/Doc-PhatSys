@@ -1,0 +1,177 @@
+---
+id: feedback-notificaciones
+title: Feedback y Notificaciones
+sidebar_position: 3.6
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es el feedback y las notificaciones?
+
+El **feedback** y las **notificaciones** son componentes esenciales en PathSys que proporcionan información al usuario sobre el estado de las operaciones, validaciones, confirmaciones y mensajes importantes del sistema. Estos componentes aseguran una comunicación clara y efectiva entre la aplicación y el usuario.
+
+### ¿Por qué son importantes?
+
+- **Comunicación clara**: Informan al usuario sobre el resultado de sus acciones
+- **Validación en tiempo real**: Muestran errores y advertencias inmediatamente
+- **Confirmación de acciones**: Permiten al usuario confirmar operaciones críticas
+- **Experiencia de usuario**: Mejoran la usabilidad y reducen la confusión
+
+## Ubicación de los componentes de feedback
+
+Los componentes de feedback en PathSys están organizados en una estructura modular:
+
+### Estructura de archivos
+
+```
+Front-End/src/shared/components/ui/feedback/
+├── Notification.vue              ← Notificación base con diferentes tipos
+├── ValidationAlert.vue           ← Alertas de validación con lista de errores
+├── ConfirmDialog.vue             ← Diálogos de confirmación
+├── ErrorMessage.vue              ← Mensajes de error simples
+├── LoadingSpinner.vue            ← Spinner de carga
+├── CaseSuccessCard.vue           ← Tarjeta de éxito para casos
+├── PatientSuccessCard.vue        ← Tarjeta de éxito para pacientes
+├── AccessDeniedAlert.vue         ← Alerta de acceso denegado
+├── NotesDialog.vue               ← Diálogo para notas
+├── TestNavigation.vue            ← Navegación de pruebas
+├── ToastContainer.vue            ← Contenedor de toasts
+└── index.ts                      ← Exportaciones centralizadas
+```
+
+## Tipos de feedback y notificaciones
+
+### 1. Notificaciones de éxito
+
+Las notificaciones de éxito confirman que una operación se completó correctamente.
+
+<img 
+  src="/img/Captures/CreacionCaso.png" 
+  alt="Notificación de éxito - Caso creado" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '800px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Notificación de éxito:</strong> Muestra cuando un caso se ha actualizado exitosamente, incluyendo detalles del caso y botones de acción.
+</div>
+
+**Características de las notificaciones de éxito:**
+- **Color verde**: Indica operación exitosa
+- **Icono de check**: Símbolo visual de confirmación
+- **Información detallada**: Muestra datos relevantes del resultado
+- **Botones de acción**: Opciones para continuar o cerrar
+
+### 2. Notificaciones de error
+
+Las notificaciones de error alertan sobre problemas que requieren atención del usuario.
+
+<img 
+  src="/img/Captures/NotificacionError.png" 
+  alt="Notificación de error con lista de errores" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '600px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Notificación de error:</strong> Muestra una lista de errores de validación que deben ser corregidos antes de continuar.
+</div>
+
+**Características de las notificaciones de error:**
+- **Color rojo**: Indica problema o error
+- **Icono de exclamación**: Símbolo visual de advertencia
+- **Lista de errores**: Muestra todos los errores encontrados
+- **Contador**: Indica cuántos errores se encontraron
+- **Timestamp**: Hora en que se generó el error
+
+### 3. Diálogos de confirmación
+
+Los diálogos de confirmación permiten al usuario confirmar acciones importantes antes de ejecutarlas.
+
+<img 
+  src="/img/Captures/Confirmacion.png" 
+  alt="Diálogo de confirmación" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '500px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Diálogo de confirmación:</strong> Solicita confirmación del usuario antes de realizar una acción importante como marcar un caso como "Pendiente de Aprobación".
+</div>
+
+**Características de los diálogos de confirmación:**
+- **Overlay modal**: Fondo semitransparente que enfoca la atención
+- **Pregunta clara**: Describe exactamente qué acción se va a realizar
+- **Botones de acción**: Opciones claras de "Sí" y "Cancelar"
+- **Acción destructiva**: El botón de confirmación usa color rojo para acciones importantes
+
+## Componentes principales
+
+### Notification.vue - Componente base
+
+El componente `Notification.vue` es la base para todas las notificaciones del sistema:
+
+**Tipos de notificación disponibles:**
+- **success**: Notificaciones de éxito (verde)
+- **error**: Notificaciones de error (rojo)
+- **warning**: Advertencias (amarillo)
+- **info**: Información general (azul)
+
+**Características:**
+- **Posicionamiento flexible**: Puede mostrarse inline o en posición fija
+- **Auto-cierre**: Opción de cerrarse automáticamente
+- **Iconos personalizados**: Soporte para iconos custom
+- **Transiciones suaves**: Animaciones de entrada y salida
+
+### ValidationAlert.vue - Alertas de validación
+
+Especializado en mostrar errores de validación en formularios:
+
+**Funcionalidades:**
+- **Lista de errores**: Muestra múltiples errores de validación
+- **Contador automático**: Indica cuántos errores se encontraron
+- **Sin auto-cierre**: Permanece visible hasta que se corrijan los errores
+- **Estilo inline**: Se integra en el flujo del formulario
+
+## Estados de carga y feedback
+
+### LoadingSpinner.vue
+
+Indica que una operación está en progreso:
+
+**Uso típico:**
+- Durante cargas de datos
+- Al enviar formularios
+- En operaciones que toman tiempo
+
+### Estados de los componentes
+
+Los componentes de feedback manejan diferentes estados:
+
+- **Cargando**: Spinner activo, botones deshabilitados
+- **Éxito**: Notificación verde con confirmación
+- **Error**: Notificación roja con detalles del error
+- **Advertencia**: Notificación amarilla con precaución
+- **Información**: Notificación azul con información general
+
+
+## Mejores prácticas en feedback
+
+### Principios de diseño
+
+- **Claridad**: Mensajes específicos y accionables
+- **Consistencia**: Mismos patrones en toda la aplicación
+- **Oportunidad**: Feedback inmediato cuando sea relevante
+- **Jerarquía**: Priorizar información importante
+
+### Tipos de mensajes
+
+- **Éxito**: Confirmar acciones completadas
+- **Error**: Explicar problemas y cómo solucionarlos
+- **Advertencia**: Alertar sobre consecuencias potenciales
+- **Información**: Proporcionar contexto o ayuda
+
+### Accesibilidad
+
+- **Contraste adecuado**: Colores que cumplan estándares
+- **Iconos descriptivos**: Con texto alternativo
+- **Navegación por teclado**: Accesible sin mouse
+- **Lectores de pantalla**: Compatible con tecnologías asistivas
+

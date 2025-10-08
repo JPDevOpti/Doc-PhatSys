@@ -1,0 +1,137 @@
+---
+id: layouts-navegacion
+title: Layouts y navegación
+sidebar_position: 3.1
+---
+
+## ¿Qué es un Layout?
+
+Un **layout** es la estructura visual base que define cómo se organizan los elementos en todas las páginas de la aplicación. En PathSys, el layout funciona como un marco que contiene elementos fijos (como el header y sidebar) y un área dinámica donde cambia el contenido según la página que esté viendo el usuario.
+
+### ¿Por qué es importante?
+
+- **Consistencia visual**: Todas las páginas mantienen la misma estructura
+- **Navegación intuitiva**: El usuario siempre sabe dónde encontrar las funciones principales
+- **Eficiencia**: Los elementos comunes (menú, header) no necesitan recargarse al cambiar de página
+- **Experiencia de usuario**: Reduce la carga cognitiva al mantener elementos familiares
+
+## Componentes del Layout
+
+### Header (Encabezado)
+
+<img 
+  src="/img/Captures/Header.png" 
+  alt="Header de PathSys" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Header de PathSys:</strong> Barra superior con logo LIME, información del usuario, notificaciones y menú de perfil.
+</div>
+
+El **header** es la barra superior que contiene:
+
+- **Logo de LIME**: Identidad visual de la organización
+- **Información del usuario**: Nombre, rol y foto de perfil
+- **Menú de usuario**: Acceso rápido al perfil y configuración
+
+**¿Por qué está siempre visible?**
+- Proporciona contexto de identidad al usuario
+- Permite acceso rápido a funciones críticas (notificaciones, perfil)
+- Mantiene la marca institucional presente en todo momento
+
+### Sidebar (Barra lateral)
+
+<div style={{display: 'flex', gap: '24px', alignItems: 'flex-start', marginBottom: '16px'}}>
+  <div style={{flex: '0 0 300px'}}>
+    <img 
+      src="/img/Captures/Sidebar.png" 
+      alt="Sidebar de PathSys" 
+      style={{border: '2px solid #e5e7eb', borderRadius: '8px', width: '50%', height: 'auto'}}
+    />
+    <div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginTop: '8px'}}>
+      <strong>Sidebar de PathSys:</strong> Menú de navegación lateral con módulos organizados por iconos y categorías funcionales.
+    </div>
+  </div>
+  
+  <div style={{flex: '1', minWidth: '0'}}>
+    <p>La <strong>sidebar</strong> es el menú de navegación principal que incluye:</p>
+    
+    <ul>
+      <li><strong>Módulos principales</strong>: Dashboard, Casos, Pacientes, Resultados, etc.</li>
+      <li><strong>Navegación jerárquica</strong>: Organización lógica de las funciones del sistema</li>
+      <li><strong>Indicadores visuales</strong>: Iconos que facilitan la identificación rápida</li>
+      <li><strong>Estado activo</strong>: Muestra claramente en qué sección se encuentra el usuario</li>
+    </ul>
+
+    <p><strong>¿Por qué está en el lado izquierdo?</strong></p>
+    <ul>
+      <li><strong>Estándar de la industria</strong>: Los usuarios esperan encontrar la navegación a la izquierda</li>
+      <li><strong>Lectura natural</strong>: Se lee de izquierda a derecha, por lo que la navegación se encuentra primero</li>
+      <li><strong>Espacio eficiente</strong>: Aprovecha el espacio vertical sin interferir con el contenido principal</li>
+    </ul>
+  </div>
+</div>
+
+### Área de Contenido Principal
+
+Esta es la zona donde se renderiza el contenido específico de cada página. Aquí aparecen:
+
+- **Páginas de módulos**: Lista de casos, formularios, reportes, etc.
+- **Cards informativos**: Tarjetas con métricas y resúmenes
+- **Formularios**: Interfaces para crear y editar información
+- **Tablas y listados**: Datos organizados en filas y columnas
+
+## Cards
+
+<img 
+  src="/img/Captures/Dashboard.png" 
+  alt="Dashboard de PathSys" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Dashboard de PathSys:</strong> Página principal con cards de métricas, gráficos estadísticos y resúmenes del estado del laboratorio.
+</div>
+
+### ¿Qué son las Cards?
+
+Las **cards** (tarjetas) son componentes visuales que presentan información específica de manera organizada:
+
+- **Métricas clave**: Número de casos pendientes, completados, etc.
+- **Gráficos**: Visualizaciones de tendencias y estadísticas
+- **Acciones rápidas**: Botones para funciones frecuentes
+- **Estado del sistema**: Indicadores de salud del laboratorio
+
+**¿Por qué usar cards?**
+- **Escaneabilidad**: La información se puede leer rápidamente
+- **Organización**: Cada métrica tiene su propio espacio visual
+- **Interactividad**: Permiten acciones directas sobre la información
+- **Responsividad**: Se adaptan bien a diferentes tamaños de pantalla
+
+## Navegación por Roles
+
+### ¿Cómo funciona?
+
+La navegación se adapta automáticamente según el rol del usuario:
+
+- **Patólogos**: Ven módulos de aprobación, reportes avanzados y estadísticas
+- **Residentes**: Acceso a casos asignados y herramientas de aprendizaje
+- **Auxiliares**: Funciones operativas como registro de pacientes y pruebas
+- **Administradores**: Herramientas de configuración y gestión del sistema
+
+### ¿Por qué es importante?
+
+- **Seguridad**: Cada usuario solo ve las funciones que puede usar
+- **Eficiencia**: Reduce la confusión al mostrar solo opciones relevantes
+- **Experiencia personalizada**: Cada rol tiene una interfaz optimizada para sus necesidades
+
+## Responsividad
+
+### Adaptación a dispositivos
+
+El layout se adapta automáticamente según el dispositivo:
+
+- **Desktop**: Sidebar siempre visible, layout completo
+- **Tablet**: Sidebar colapsible, contenido optimizado
+- **Móvil**: Sidebar como overlay, navegación simplificada

@@ -1,0 +1,241 @@
+---
+id: assets-recursos
+title: Assets y Recursos
+sidebar_position: 3.8
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué son los assets y recursos?
+
+Los **assets** y **recursos** son todos los elementos estáticos que utiliza PathSys para su funcionamiento visual y funcional. Incluyen iconos, imágenes, estilos CSS, fuentes y otros archivos que no son código JavaScript/TypeScript pero son esenciales para la experiencia de usuario.
+
+### ¿Por qué son importantes?
+
+- **Identidad visual**: Logos, iconos e imágenes que representan la marca LIME
+- **Consistencia**: Recursos reutilizables que mantienen la coherencia visual
+- **Performance**: Organización optimizada para carga eficiente
+- **Mantenibilidad**: Estructura clara que facilita la gestión de recursos
+
+## Estructura de assets en PathSys
+
+### Organización de archivos
+
+```
+Front-End/src/assets/
+├── FavIco.ico                  ← Favicon del sitio
+├── icons/                      ← Sistema de iconos SVG
+│   ├── index.ts               ← Exportaciones centralizadas
+│   ├── SVG/                   ← Archivos SVG originales
+│   ├── HomeIcon.vue           ← Componentes de iconos
+│   ├── DashboardIcon.vue      ← (70+ iconos Vue)
+│   └── ... (más iconos)
+├── images/                     ← Imágenes estáticas
+│   ├── Logo-LIME-Fondo.jpeg   ← Logo LIME con fondo
+│   ├── Logo-LIME-NoFondo.png  ← Logo LIME sin fondo
+│   ├── LOGO-LIME-Inicial.png  ← Logo inicial LIME
+│   ├── Banner_HAMA.png        ← Banner Hospital Alma Máter
+│   └── Banner_UDEA.png        ← Banner Universidad de Antioquia
+└── styles/                     ← Sistema de estilos CSS
+    ├── main.css               ← Archivo principal de estilos
+    ├── base/                  ← Estilos base del sistema
+    ├── components/            ← Estilos de componentes
+    └── vendor/                ← Estilos de librerías externas
+```
+
+
+## Imágenes y logos
+
+### Logos de LIME
+
+PathSys incluye diferentes versiones del logo LIME para diferentes contextos:
+
+#### Logo completo con fondo
+
+<img 
+  src="/img/Captures/Logo-LIME-Fondo.jpeg" 
+  alt="Logo LIME con fondo" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', maxWidth: '400px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Logo LIME con fondo:</strong> Versión completa del logo para headers, documentos oficiales y contextos donde se requiere máxima presencia de marca.
+</div>
+
+- **Uso**: Headers, documentos oficiales, presentaciones
+- **Formato**: JPEG para compatibilidad universal
+- **Características**: Fondo sólido, texto legible, presencia institucional
+
+
+#### Logo inicial simplificado
+
+<img 
+  src="/img/Captures/LOGO-LIME-Inicial.png" 
+  alt="Logo inicial LIME" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', maxWidth: '200px', backgroundColor: '#f8f9fa', padding: '20px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Logo inicial LIME:</strong> Versión simplificada con solo la letra "L" para favicons, iconos pequeños y contextos donde el espacio es limitado.
+</div>
+
+- **Uso**: Favicons, iconos pequeños, espacios reducidos
+- **Formato**: PNG optimizado
+- **Características**: Diseño minimalista, alta legibilidad en tamaños pequeños
+
+### Banners institucionales
+
+#### Banner Hospital Alma Máter de Antioquia
+
+<img 
+  src="/img/Captures/Baner_HAMA.png" 
+  alt="Banner Hospital Alma Máter de Antioquia" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', maxWidth: '500px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Banner HAMA:</strong> Logo institucional del Hospital Alma Máter de Antioquia con diseño moderno que incluye elementos médicos como líneas de electrocardiograma integradas en la tipografía.
+</div>
+
+- **Uso**: Páginas específicas de HAMA, documentos institucionales
+- **Características**: Diseño moderno con elementos médicos, colores institucionales
+- **Integración**: Representación de la alianza hospitalaria con LIME
+
+#### Banner Universidad de Antioquia
+
+<img 
+  src="/img/Captures/Banner_UDEA.png" 
+  alt="Banner Universidad de Antioquia" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', maxWidth: '500px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Banner UDEA:</strong> Escudo oficial de la Universidad de Antioquia con elementos heráldicos tradicionales que representan la tradición académica y la excelencia educativa.
+</div>
+
+- **Uso**: Páginas de colaboración académica, documentos de investigación
+- **Características**: Escudo heráldico tradicional, elementos simbólicos institucionales
+- **Integración**: Representación de la alianza académica universitaria
+
+## Sistema de estilos CSS
+
+### Estructura modular de estilos
+
+```
+Front-End/src/assets/styles/
+├── main.css                    ← Punto de entrada principal
+├── base/                       ← Estilos fundamentales
+│   ├── variables.css          ← Variables CSS del sistema
+│   ├── fonts.css              ← Configuración de fuentes
+│   ├── reset.css              ← Reset de estilos del navegador
+│   └── globals.css            ← Estilos globales de la aplicación
+├── components/                 ← Estilos específicos de componentes
+│   ├── utilities.css          ← Clases de utilidad personalizadas
+│   ├── navigation.css         ← Estilos de navegación
+│   ├── buttons.css            ← Estilos de botones
+│   ├── forms.css              ← Estilos de formularios
+│   ├── tables.css             ← Estilos de tablas
+│   └── auth.css               ← Estilos de autenticación
+└── vendor/                     ← Estilos de librerías externas
+    ├── apexcharts.css         ← Estilos para gráficos
+    ├── flatpickr.css          ← Estilos para selector de fechas
+    ├── fullcalendar.css       ← Estilos para calendario
+    ├── swiper.css             ← Estilos para carruseles
+    └── datepicker.css         ← Estilos adicionales de fechas
+```
+
+### Archivo principal de estilos
+
+<CodeBlock language="css">{`/* main.css - Punto de entrada principal */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Importación de fuentes desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+/* Variables CSS del sistema LIME */
+@import './base/variables.css';
+
+/* Estilos base y resets */
+@import './base/reset.css';
+@import './base/globals.css';
+
+/* Componentes personalizados */
+@import './components/utilities.css';
+@import './components/navigation.css';
+@import './components/buttons.css';
+@import './components/forms.css';
+@import './components/tables.css';
+@import './components/auth.css';
+
+/* Bibliotecas externas */
+@import './vendor/apexcharts.css';
+@import './vendor/flatpickr.css';
+@import './vendor/fullcalendar.css';
+@import './vendor/swiper.css';
+@import './vendor/datepicker.css';`}</CodeBlock>
+
+### Variables CSS del sistema
+
+<CodeBlock language="css">{`/* variables.css - Tokens de diseño */
+:root {
+  /* Configuración de fuentes */
+  --font-outfit: Outfit, sans-serif;
+
+  /* Paleta de colores LIME */
+  --color-LIME-Azul-Claro: #CAEAF2;
+  --color-LIME-Azul-2: #8FC8DE;
+  --color-LIME-Azul-3: #5CA6C9;
+  --color-LIME-Azul-4: #2974A3;
+  --color-LIME-Azul-Oscuro: #064D5F;
+
+  /* Colores de marca */
+  --color-brand-25: #f2f7ff;
+  --color-brand-50: #ecf3ff;
+  --color-brand-100: #E6FAEC;
+  --color-brand-200: #E6FAEC;
+  --color-brand-300: #B3EBC7;
+  --color-brand-400: #A4EAB5;
+  --color-brand-500: #7FCB97;
+  --color-brand-600: #7FCB97;
+  --color-brand-700: #3D8D5B;
+  --color-brand-800: #3D8D5B;
+  --color-brand-900: #3D8D5B;
+
+  /* Escala de grises */
+  --color-gray-25: #fcfcfd;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f2f4f7;
+  --color-gray-200: #e4e7ec;
+  --color-gray-300: #d0d5dd;
+  --color-gray-400: #98a2b3;
+  --color-gray-500: #667085;
+  --color-gray-600: #475467;
+  --color-gray-700: #344054;
+  --color-gray-800: #1d2939;
+  --color-gray-900: #101828;
+}`}</CodeBlock>
+
+## Mejores prácticas para assets
+
+### Organización de archivos
+
+**Iconos:**
+- Mantener consistencia en el viewBox (24x24px)
+- Usar `currentColor` para flexibilidad de color
+- Incluir `aria-hidden="true"` para iconos decorativos
+- Exportar desde un índice centralizado
+
+**Imágenes:**
+- Usar formatos apropiados (PNG para transparencia, JPEG para fotos)
+- Optimizar para web (compresión adecuada)
+- Proporcionar versiones responsive cuando sea necesario
+- Nombrar archivos de manera descriptiva
+
+**Estilos:**
+- Mantener separación de responsabilidades
+- Usar variables CSS para valores reutilizables
+- Importar en orden lógico (reset → base → components → vendor)
+- Documentar variables y clases personalizadas
+

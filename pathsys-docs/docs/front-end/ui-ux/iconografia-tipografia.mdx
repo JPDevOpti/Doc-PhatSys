@@ -1,0 +1,297 @@
+---
+id: iconografia-tipografia
+title: Iconografía y Tipografía
+sidebar_position: 3.7
+---
+
+import CodeBlock from '@theme/CodeBlock';
+
+## ¿Qué es la iconografía y tipografía?
+
+La **iconografía** y **tipografía** son elementos fundamentales del diseño de PathSys que establecen la identidad visual y mejoran la usabilidad del sistema. La iconografía proporciona símbolos universales para acciones y conceptos, mientras que la tipografía asegura la legibilidad y jerarquía de la información.
+
+### ¿Por qué son importantes?
+
+- **Consistencia visual**: Mantienen un lenguaje visual uniforme en todo el sistema
+- **Usabilidad**: Los iconos facilitan la navegación y comprensión rápida
+- **Legibilidad**: La tipografía optimizada mejora la experiencia de lectura
+- **Identidad de marca**: Refuerzan la imagen profesional del sistema LIME
+
+## Iconografía en PathSys
+
+### Sistema de iconos unificado
+
+PathSys utiliza un sistema de iconos consistente basado en iconos SVG lineales con características uniformes:
+
+<img 
+  src="/img/Captures/Iconos.png" 
+  alt="Colección de iconos de PathSys" 
+  style={{border: '2px solid #e5e7eb', borderRadius: '8px', display: 'block', margin: '16px 0', width: '100%', maxWidth: '800px'}}
+/>
+
+<div style={{fontSize: '14px', color: '#6b7280', fontStyle: 'italic', marginBottom: '16px'}}>
+  <strong>Colección de iconos:</strong> Sistema unificado de 64 iconos con estilo consistente de líneas delgadas y diseño minimalista.
+</div>
+
+### Características del sistema de iconos
+
+**Estilo consistente:**
+- **Líneas delgadas**: Grosor uniforme de 1.5px para todos los iconos
+- **Sin rellenos**: Solo contornos para mantener simplicidad
+- **Color uniforme**: Uso de `currentColor` para adaptabilidad
+- **Tamaño estándar**: ViewBox de 24x24px para todos los iconos
+- **Diseño minimalista**: Sin elementos decorativos innecesarios
+
+**Categorías de iconos:**
+- **Navegación**: Flechas, menús, home, dashboard
+- **Acciones**: Editar, eliminar, agregar, guardar, imprimir
+- **Usuarios**: Perfil, grupo de usuarios, búsqueda de usuarios
+- **Documentos**: Archivos, listas, tablas, gráficos
+- **Estados**: Éxito, error, advertencia, información
+- **Médicos**: Casos, pacientes, pruebas, entidades hospitalarias
+
+## Ubicación de los iconos en el código
+
+### Estructura de archivos
+
+```
+Front-End/src/assets/icons/
+├── index.ts                    ← Exportaciones centralizadas
+├── HomeIcon.vue               ← Icono de inicio
+├── DashboardIcon.vue          ← Icono de dashboard
+├── PatientsIcon.vue           ← Icono de pacientes
+├── CaseIcon.vue               ← Icono de casos
+├── TestIcon.vue               ← Icono de pruebas
+├── EntityIcon.vue             ← Icono de entidades
+├── DoctorIcon.vue             ← Icono de doctores
+├── EditIcon.vue               ← Icono de editar
+├── TrashIcon.vue              ← Icono de eliminar
+├── PlusIcon.vue               ← Icono de agregar
+├── SearchIcon.vue             ← Icono de búsqueda
+├── BellIcon.vue               ← Icono de notificaciones
+├── SettingsIcon.vue           ← Icono de configuración
+└── ... (más de 70 iconos)
+```
+
+### Importación y uso
+
+<CodeBlock language="typescript">{`// Importación desde el índice centralizado
+import {
+  HomeIcon,
+  DashboardIcon,
+  PatientsIcon,
+  CaseIcon,
+  EditIcon,
+  TrashIcon,
+  PlusIcon,
+  BellIcon
+} from '@/assets/icons'
+
+// Uso en componentes Vue
+<template>
+  <div class="flex items-center gap-2">
+    <HomeIcon class="w-5 h-5 text-gray-600" />
+    <span>Inicio</span>
+  </div>
+  
+  <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg">
+    <PlusIcon class="w-4 h-4" />
+    Agregar Caso
+  </button>
+</template>`}</CodeBlock>
+
+### Estructura de un icono
+
+<CodeBlock language="vue">{`<template>
+  <svg 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg" 
+    aria-hidden="true"
+  >
+    <path 
+      d="M10.5 14L17 14" 
+      stroke="currentColor" 
+      stroke-width="1.5" 
+      stroke-linecap="round"
+    />
+    <!-- Más paths según el icono -->
+  </svg>
+</template>
+
+<script setup lang="ts">
+// Icono de Listado
+</script>`}</CodeBlock>
+
+## Tipografía en PathSys
+
+### Fuente principal: Outfit
+
+PathSys utiliza la fuente **Outfit** de Google Fonts como tipografía principal:
+
+**Características de Outfit:**
+- **Familia**: Sans-serif moderna y legible
+- **Pesos disponibles**: 100-900 (todas las variantes)
+- **Estilo**: Diseño geométrico y limpio
+- **Optimización**: Cargada desde Google Fonts con `display=swap`
+
+### Configuración tipográfica
+
+<CodeBlock language="css">{`/* Importación desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
+/* Variables CSS para tipografía */
+:root {
+  --font-outfit: Outfit, sans-serif;
+  
+  /* Tamaños de texto y line-height */
+  --text-title-2xl: 72px;
+  --text-title-2xl--line-height: 90px;
+  --text-title-xl: 60px;
+  --text-title-xl--line-height: 72px;
+  --text-title-lg: 48px;
+  --text-title-lg--line-height: 60px;
+  --text-title-md: 36px;
+  --text-title-md--line-height: 44px;
+  --text-title-sm: 30px;
+  --text-title-sm--line-height: 38px;
+  --text-theme-xl: 20px;
+  --text-theme-xl--line-height: 30px;
+  --text-theme-sm: 14px;
+  --text-theme-sm--line-height: 20px;
+  --text-theme-xs: 12px;
+  --text-theme-xs--line-height: 18px;
+}
+
+/* Aplicación global */
+body {
+  font-family: var(--font-outfit);
+  font-weight: 400;
+  background-color: #f9fafb;
+}`}</CodeBlock>
+
+### Jerarquía tipográfica
+
+**Títulos principales (Títulos de página):**
+- **Tamaño**: 36px (--text-title-md)
+- **Line-height**: 44px
+- **Peso**: 600-700 (semi-bold/bold)
+- **Uso**: Nombres de módulos, páginas principales
+
+**Títulos secundarios (Subtítulos):**
+- **Tamaño**: 30px (--text-title-sm)
+- **Line-height**: 38px
+- **Peso**: 500-600 (medium/semi-bold)
+- **Uso**: Secciones dentro de módulos
+
+**Texto temático (Contenido destacado):**
+- **Tamaño**: 20px (--text-theme-xl)
+- **Line-height**: 30px
+- **Peso**: 400-500 (regular/medium)
+- **Uso**: Textos importantes, etiquetas principales
+
+**Texto estándar (Contenido general):**
+- **Tamaño**: 14px (--text-theme-sm)
+- **Line-height**: 20px
+- **Peso**: 400 (regular)
+- **Uso**: Párrafos, descripciones, contenido principal
+
+**Texto pequeño (Información secundaria):**
+- **Tamaño**: 12px (--text-theme-xs)
+- **Line-height**: 18px
+- **Peso**: 400 (regular)
+- **Uso**: Fechas, códigos, información auxiliar
+
+### Aplicación en componentes
+
+<CodeBlock language="vue">{`<template>
+  <!-- Título principal -->
+  <h1 class="text-4xl font-semibold text-gray-900 mb-6">
+    Gestión de Casos
+  </h1>
+  
+  <!-- Subtítulo -->
+  <h2 class="text-2xl font-medium text-gray-800 mb-4">
+    Lista de Casos Activos
+  </h2>
+  
+  <!-- Texto destacado -->
+  <p class="text-lg text-gray-700 mb-2">
+    Casos pendientes de revisión: 15
+  </p>
+  
+  <!-- Texto estándar -->
+  <p class="text-sm text-gray-600 mb-4">
+    Los casos se organizan por fecha de recepción y prioridad asignada.
+  </p>
+  
+  <!-- Texto pequeño -->
+  <span class="text-xs text-gray-500">
+    Última actualización: 15 de enero, 2025
+  </span>
+</template>`}</CodeBlock>
+
+## Mejores prácticas
+
+### Iconografía
+
+**Consistencia:**
+- Usar siempre iconos del sistema unificado
+- Mantener el mismo tamaño dentro de un contexto
+- Aplicar colores consistentes con el tema
+
+**Accesibilidad:**
+- Incluir `aria-hidden="true"` en iconos decorativos
+- Proporcionar texto alternativo cuando sea necesario
+- Mantener contraste adecuado
+
+**Usabilidad:**
+- Usar iconos universalmente reconocidos
+- Combinar iconos con texto cuando sea apropiado
+- Mantener tamaños mínimos de 16px para interacción
+
+### Tipografía
+
+**Legibilidad:**
+- Mantener line-height de al menos 1.4
+- Usar contraste mínimo de 4.5:1
+- Limitar líneas de texto a 75-80 caracteres
+
+**Jerarquía:**
+- Establecer jerarquía clara con tamaños
+- Usar pesos de fuente para enfatizar
+- Mantener consistencia en espaciado
+
+**Responsividad:**
+- Ajustar tamaños para diferentes pantallas
+- Mantener proporciones en dispositivos móviles
+- Optimizar para lectura en pantalla
+
+## Integración con Tailwind CSS
+
+PathSys utiliza Tailwind CSS para la aplicación de estilos tipográficos:
+
+<CodeBlock language="vue">{`<template>
+  <!-- Clases de Tailwind para tipografía -->
+  <div class="font-outfit">
+    <h1 class="text-4xl font-bold leading-tight text-gray-900">
+      Título Principal
+    </h1>
+    
+    <h2 class="text-2xl font-semibold leading-snug text-gray-800">
+      Subtítulo
+    </h2>
+    
+    <p class="text-base font-normal leading-relaxed text-gray-700">
+      Párrafo estándar con buena legibilidad
+    </p>
+    
+    <span class="text-sm font-medium text-gray-600">
+      Texto pequeño
+    </span>
+  </div>
+</template>`}</CodeBlock>
+
+Esta estructura de iconografía y tipografía asegura que PathSys mantenga una identidad visual coherente y profesional, mejorando tanto la usabilidad como la experiencia estética del sistema LIME.
