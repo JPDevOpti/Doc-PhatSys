@@ -1,4 +1,9 @@
 {
   "label": "Base de Datos",
-  "link": { "type": "generated-index", "title": "Base de Datos", "description": "Sección en construcción." }
+  "position": 3,
+  "link": { 
+    "type": "generated-index", 
+    "title": "Base de Datos", 
+    "description": "Documentación completa de la base de datos MongoDB de PathSys, incluyendo esquemas de colecciones, configuración de Atlas y Docker." 
+  }
 }

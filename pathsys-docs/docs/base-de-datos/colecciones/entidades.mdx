@@ -1,0 +1,142 @@
+# Colección: Entidades
+
+## Descripción General
+La colección `entities` almacena información de las entidades médicas (hospitales, clínicas, centros de salud) que utilizan el sistema PathSys para el procesamiento de casos patológicos.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `name` | String | Sí | Nombre de la entidad médica |
+| `entity_code` | String | Sí | Código único de la entidad |
+| `notes` | String | No | Notas adicionales sobre la entidad |
+| `is_active` | Boolean | Sí | Estado activo/inactivo de la entidad |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Validaciones
+
+- **name**: Longitud mínima 1, máxima 200 caracteres, no puede estar vacío
+- **entity_code**: Longitud mínima 1, máxima 20 caracteres, único, se convierte a mayúsculas
+- **notes**: Longitud máxima 500 caracteres (opcional)
+- **is_active**: Valor booleano, por defecto `true`
+
+## Validadores Personalizados
+
+```python
+@validator('name', pre=True)
+def validate_name(cls, v):
+    if not v or not str(v).strip():
+        raise ValueError('Entity name cannot be empty')
+    return str(v).strip()
+
+@validator('entity_code', pre=True) 
+def validate_entity_code(cls, v):
+    if not v or not str(v).strip():
+        raise ValueError('Entity code cannot be empty')
+    return str(v).strip().upper()
+```
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de entidad
+db.entities.createIndex({ "entity_code": 1 }, { unique: true })
+
+// Índice para búsquedas por nombre
+db.entities.createIndex({ "name": "text" })
+
+// Índice para filtros por estado activo
+db.entities.createIndex({ "is_active": 1 })
+
+// Índice compuesto para búsquedas activas
+db.entities.createIndex({ 
+  "is_active": 1, 
+  "name": 1 
+})
+
+// Índice para ordenamiento por fecha de creación
+db.entities.createIndex({ "created_at": -1 })
+```
+
+## Esquemas de Operación
+
+### EntityCreate
+```python
+class EntityCreate(EntityBase):
+    pass  # Hereda todos los campos requeridos
+```
+
+### EntityUpdate
+```python
+class EntityUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    entity_code: Optional[str] = Field(None, min_length=1, max_length=20)
+    notes: Optional[str] = Field(None, max_length=500)
+    is_active: Optional[bool] = None
+```
+
+### EntityResponse
+```python
+class EntityResponse(EntityBase):
+    id: str = Field(...)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+```
+
+### EntitySearch
+```python
+class EntitySearch(BaseModel):
+    query: Optional[str] = None
+    skip: int = Field(0, ge=0)
+    limit: int = Field(10, ge=1, le=100)
+```
+
+## Relaciones
+
+- **Pacientes**: Cada paciente está asociado a una entidad médica
+- **Casos**: Todos los casos pertenecen a una entidad específica
+- **Usuarios**: Los usuarios pueden estar asociados a entidades específicas
+- **Reportes**: Generación de reportes por entidad médica
+
+## Casos de Uso Principales
+
+1. **Gestión de Entidades**: Registro y mantenimiento de instituciones médicas
+2. **Asignación de Pacientes**: Asociación de pacientes con sus entidades
+3. **Reportes Institucionales**: Análisis de casos por entidad
+4. **Control de Acceso**: Restricción de datos por entidad
+5. **Facturación**: Agrupación de servicios por entidad
+6. **Búsqueda y Filtrado**: Localización de entidades específicas
+
+## Estados de Entidad
+
+- **Activa**: Entidad habilitada para recibir casos
+- **Inactiva**: Entidad temporalmente deshabilitada
+- **Suspendida**: Entidad con restricciones operativas
+
+## Consideraciones de Negocio
+
+- Los códigos de entidad deben seguir estándares institucionales
+- Las entidades inactivas no deben recibir nuevos casos
+- Mantener historial de cambios para auditoría
+- Validar existencia de entidad antes de asignar casos
+- Considerar jerarquías de entidades (matriz-sucursales)
+
+## Consideraciones de Rendimiento
+
+- Implementar cache para entidades activas frecuentemente consultadas
+- Optimizar consultas de búsqueda por nombre y código
+- Mantener índices actualizados para filtros por estado
+- Considerar desnormalización en colecciones relacionadas
+- Monitorear el crecimiento para optimización futura
+
+## Consideraciones de Seguridad
+
+- Validar permisos antes de modificar entidades
+- Auditar cambios en información crítica
+- Controlar acceso a datos sensibles por entidad
+- Implementar validación de códigos únicos
+- Mantener integridad referencial con colecciones relacionadas

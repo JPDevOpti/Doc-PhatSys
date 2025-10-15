@@ -1,0 +1,259 @@
+# Colección: Auxiliares
+
+## Descripción General
+La colección `auxiliaries` almacena la información del personal auxiliar del sistema PathSys, incluyendo técnicos de laboratorio, asistentes administrativos y otro personal de apoyo que participa en el procesamiento de casos patológicos.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `auxiliar_code` | String | Sí | Código único del auxiliar |
+| `auxiliar_name` | String | Sí | Nombre completo del auxiliar |
+| `auxiliar_email` | String | Sí | Email único del auxiliar |
+| `is_active` | Boolean | Sí | Estado activo/inactivo |
+| `observations` | String | No | Notas adicionales |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Validaciones
+
+- **auxiliar_code**: Único en el sistema, longitud máxima 11 caracteres
+- **auxiliar_name**: Longitud mínima 1, máxima 100 caracteres, no puede estar vacío
+- **auxiliar_email**: Formato de email válido, único en el sistema
+- **is_active**: Valor booleano, por defecto `true`
+- **observations**: Longitud máxima 500 caracteres (opcional)
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de auxiliar
+db.auxiliaries.createIndex({ "auxiliar_code": 1 }, { unique: true })
+
+// Índice único para email
+db.auxiliaries.createIndex({ "auxiliar_email": 1 }, { unique: true })
+
+// Índice para búsquedas por nombre
+db.auxiliaries.createIndex({ "auxiliar_name": "text" })
+
+// Índice para filtros por estado activo
+db.auxiliaries.createIndex({ "is_active": 1 })
+
+// Índice compuesto para búsquedas activas
+db.auxiliaries.createIndex({ 
+  "is_active": 1, 
+  "auxiliar_name": 1 
+})
+```
+
+## Esquemas de Operación
+
+### AuxiliarCreate
+```python
+class AuxiliarCreate(AuxiliarBase):
+    password: str = Field(..., min_length=6, max_length=128, 
+                         description="Contraseña del auxiliar")
+```
+
+### AuxiliarUpdate
+```python
+class AuxiliarUpdate(BaseModel):
+    auxiliar_name: Optional[str] = Field(None, max_length=100)
+    auxiliar_email: Optional[EmailStr] = None
+    is_active: Optional[bool] = None
+    observations: Optional[str] = Field(None, max_length=500)
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
+```
+
+### AuxiliarResponse
+```python
+class AuxiliarResponse(AuxiliarBase):
+    id: str = Field(..., description="ID único del auxiliar")
+    created_at: datetime = Field(..., description="Fecha de creación")
+    updated_at: datetime = Field(..., description="Fecha de última actualización")
+```
+
+### AuxiliarSearch
+```python
+class AuxiliarSearch(BaseModel):
+    q: Optional[str] = Field(None, description="Término de búsqueda general")
+    auxiliar_name: Optional[str] = Field(None, description="Filtrar por nombre")
+    auxiliar_code: Optional[str] = Field(None, description="Filtrar por código")
+    auxiliar_email: Optional[str] = Field(None, description="Filtrar por email")
+    is_active: Optional[bool] = Field(None, description="Filtrar por estado activo")
+```
+
+## Tipos de Personal Auxiliar
+
+### Técnicos de Laboratorio
+- **Función**: Procesamiento de muestras
+- **Responsabilidades**: Preparación de láminas, tinción, control de calidad
+- **Acceso**: Módulos de muestras y casos
+
+### Asistentes Administrativos
+- **Función**: Gestión administrativa
+- **Responsabilidades**: Registro de pacientes, programación, archivo
+- **Acceso**: Módulos de pacientes y entidades
+
+### Personal de Recepción
+- **Función**: Atención al cliente
+- **Responsabilidades**: Recepción de muestras, información a pacientes
+- **Acceso**: Módulos de consulta y seguimiento
+
+### Coordinadores de Área
+- **Función**: Supervisión operativa
+- **Responsabilidades**: Coordinación de flujos, asignación de tareas
+- **Acceso**: Módulos de gestión y reportes
+
+## Relaciones
+
+- **Usuarios**: Cada auxiliar puede tener credenciales de acceso al sistema
+- **Casos**: Los auxiliares pueden participar en el procesamiento de casos
+- **Muestras**: Gestión y seguimiento de muestras de laboratorio
+- **Tickets**: Creación de tickets de soporte técnico
+- **Auditoría**: Registro de actividades realizadas
+
+## Casos de Uso Principales
+
+1. **Gestión de Personal**: Registro y mantenimiento de información del personal auxiliar
+2. **Asignación de Tareas**: Distribución de responsabilidades operativas
+3. **Control de Acceso**: Gestión de permisos y roles en el sistema
+4. **Seguimiento de Actividades**: Monitoreo de tareas realizadas
+5. **Reportes de Productividad**: Análisis de rendimiento del personal
+6. **Gestión de Turnos**: Organización de horarios y disponibilidad
+
+## Permisos y Roles
+
+### Permisos Básicos
+- Consulta de casos asignados
+- Actualización de estados de muestras
+- Registro de actividades realizadas
+- Acceso a información de pacientes (limitado)
+
+### Permisos Avanzados
+- Gestión de muestras complejas
+- Supervisión de procesos
+- Generación de reportes operativos
+- Coordinación con otros departamentos
+
+### Restricciones
+- No acceso a información financiera
+- No modificación de diagnósticos
+- No acceso a datos de otros auxiliares
+- Limitaciones por entidad asignada
+
+## Estados del Auxiliar
+
+### Activo
+- Habilitado para realizar tareas asignadas
+- Acceso completo a módulos permitidos
+- Participación en flujos de trabajo
+
+### Inactivo
+- Temporalmente deshabilitado
+- Sin acceso al sistema
+- Casos asignados reasignados
+
+### Suspendido
+- Acceso restringido por motivos disciplinarios
+- Solo consulta de información básica
+- Supervisión especial requerida
+
+## Consideraciones de Seguridad
+
+### Autenticación
+- Contraseñas seguras obligatorias
+- Cambio periódico de contraseñas
+- Autenticación de dos factores (opcional)
+
+### Autorización
+- Permisos basados en roles específicos
+- Acceso limitado por entidad
+- Auditoría de acciones realizadas
+
+### Privacidad
+- Acceso limitado a información de pacientes
+- Registro de consultas realizadas
+- Cumplimiento de normativas de privacidad
+
+## Integración con Sistemas
+
+### Sistema de Turnos
+```python
+def get_auxiliar_schedule(auxiliar_id: str, date: datetime):
+    # Integración con sistema de gestión de turnos
+    return schedule_system.get_schedule(auxiliar_id, date)
+```
+
+### Sistema de Tareas
+```python
+def assign_task_to_auxiliar(auxiliar_id: str, task: dict):
+    # Asignación automática de tareas
+    auxiliar = get_auxiliar_by_id(auxiliar_id)
+    if auxiliar.is_active:
+        return task_system.assign_task(auxiliar_id, task)
+```
+
+### Sistema de Capacitación
+```python
+def get_training_status(auxiliar_id: str):
+    # Verificación de estado de capacitación
+    return training_system.get_status(auxiliar_id)
+```
+
+## Métricas y Reportes
+
+### Métricas de Productividad
+- Número de muestras procesadas por día
+- Tiempo promedio de procesamiento
+- Calidad de trabajo (errores/retrabajos)
+- Cumplimiento de horarios
+
+### Reportes Operativos
+- Distribución de carga de trabajo
+- Análisis de eficiencia por auxiliar
+- Identificación de cuellos de botella
+- Planificación de recursos
+
+## Consideraciones de Rendimiento
+
+- Implementar cache para auxiliares activos frecuentemente consultados
+- Optimizar consultas de búsqueda por nombre y código
+- Mantener índices actualizados para filtros por estado
+- Considerar desnormalización para reportes frecuentes
+- Monitorear el crecimiento de la colección
+
+## Consideraciones de Cumplimiento
+
+### Normativas Laborales
+- Registro de horas trabajadas
+- Cumplimiento de descansos obligatorios
+- Documentación de capacitaciones
+
+### Normativas de Calidad
+- Certificaciones requeridas
+- Evaluaciones periódicas de competencia
+- Registro de actividades críticas
+
+### Normativas de Seguridad
+- Acceso controlado a áreas restringidas
+- Manejo seguro de materiales biológicos
+- Protocolos de emergencia
+
+## Backup y Recuperación
+
+### Datos Críticos
+- Información personal del auxiliar
+- Historial de actividades
+- Asignaciones de casos
+- Registros de capacitación
+
+### Estrategia de Backup
+```python
+def backup_auxiliar_data():
+    # Backup diario de información crítica
+    critical_data = db.auxiliaries.find({"is_active": True})
+    backup_system.store(critical_data, "auxiliaries_backup")
+```

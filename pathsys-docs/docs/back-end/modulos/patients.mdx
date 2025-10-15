@@ -1,5 +1,566 @@
 ---
 id: mod-patients
-title: Patients
+title: Pacinetes
 sidebar_position: 2
 ---
+
+# Módulo de Pacientes
+
+## Objetivo
+
+El módulo de pacientes gestiona toda la información relacionada con los pacientes del sistema PathSys, incluyendo su registro, actualización, búsqueda y eliminación. Proporciona funcionalidades avanzadas de búsqueda y manejo de identificaciones.
+
+## Estructura del Módulo
+
+```
+app/modules/patients/
+├── __init__.py
+├── docs/                    # Documentación específica del módulo
+│   ├── API.md
+│   └── README.md
+├── models/                  # Modelos de datos
+│   ├── __init__.py
+│   └── patient.py
+├── repositories/            # Capa de acceso a datos
+│   ├── __init__.py
+│   └── patient_repository.py
+├── routes/                  # Endpoints de la API
+│   ├── __init__.py
+│   └── patient_routes.py
+├── schemas/                 # Esquemas de validación
+│   ├── __init__.py
+│   └── patient.py
+└── services/               # Lógica de negocio
+    ├── __init__.py
+    └── patient_service.py
+```
+
+## Endpoints Disponibles
+
+### 1. Crear Paciente
+- **Endpoint**: `POST /api/v1/patients/`
+- **Descripción**: Crea un nuevo paciente en el sistema
+- **Autenticación**: Requerida
+
+**Request Body**:
+```json
+{
+  "identification_type": 1,
+  "identification_number": "12345678",
+  "first_name": "Juan",
+  "second_name": "Carlos",
+  "first_lastname": "Pérez",
+  "second_lastname": "García",
+  "birth_date": "1990-05-15",
+  "gender": "Masculino",
+  "location": {
+    "municipality_code": "05001",
+    "municipality_name": "Medellín",
+    "subregion": "Valle de Aburrá",
+    "address": "Calle 123 #45-67"
+  },
+  "entity_info": {
+    "id": "EPS001",
+    "name": "EPS Sura"
+  },
+  "care_type": "Ambulatorio",
+  "observations": "Paciente con antecedentes familiares"
+}
+```
+
+**Response** (201):
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "patient_code": "1-12345678",
+  "identification_type": 1,
+  "identification_number": "12345678",
+  "first_name": "Juan",
+  "second_name": "Carlos",
+  "first_lastname": "Pérez",
+  "second_lastname": "García",
+  "birth_date": "1990-05-15",
+  "gender": "Masculino",
+  "location": {
+    "municipality_code": "05001",
+    "municipality_name": "Medellín",
+    "subregion": "Valle de Aburrá",
+    "address": "Calle 123 #45-67"
+  },
+  "entity_info": {
+    "id": "EPS001",
+    "name": "EPS Sura"
+  },
+  "care_type": "Ambulatorio",
+  "observations": "Paciente con antecedentes familiares",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### 2. Listar Pacientes
+- **Endpoint**: `GET /api/v1/patients/`
+- **Descripción**: Obtiene una lista paginada de pacientes con filtros opcionales
+- **Autenticación**: Requerida
+
+**Query Parameters**:
+- `skip` (int, opcional): Número de registros a omitir (default: 0)
+- `limit` (int, opcional): Número máximo de registros (default: 100, max: 1000)
+- `search` (string, opcional): Término de búsqueda (nombre, apellido, número de identificación)
+- `entity` (string, opcional): Filtro por entidad
+- `gender` (string, opcional): Filtro por género ("Masculino" o "Femenino")
+- `care_type` (string, opcional): Filtro por tipo de atención ("Ambulatorio" o "Hospitalizado")
+
+**Ejemplo de Request**:
+```
+GET /api/v1/patients/?skip=0&limit=10&search=Juan&gender=Masculino
+```
+
+**Response** (200):
+```json
+[
+  {
+    "id": "507f1f77bcf86cd799439011",
+    "patient_code": "1-12345678",
+    "identification_type": 1,
+    "identification_number": "12345678",
+    "first_name": "Juan",
+    "second_name": "Carlos",
+    "first_lastname": "Pérez",
+    "second_lastname": "García",
+    "birth_date": "1990-05-15",
+    "gender": "Masculino",
+    "location": {
+      "municipality_code": "05001",
+      "municipality_name": "Medellín",
+      "subregion": "Valle de Aburrá",
+      "address": "Calle 123 #45-67"
+    },
+    "entity_info": {
+      "id": "EPS001",
+      "name": "EPS Sura"
+    },
+    "care_type": "Ambulatorio",
+    "observations": "Paciente con antecedentes familiares",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+]
+```
+
+### 3. Búsqueda Avanzada
+- **Endpoint**: `GET /api/v1/patients/search/advanced`
+- **Descripción**: Realiza búsquedas avanzadas con múltiples criterios
+- **Autenticación**: Requerida
+
+**Query Parameters**:
+- `identification_type` (int, opcional): Tipo de identificación (1-9)
+- `identification_number` (string, opcional): Número de identificación
+- `first_name` (string, opcional): Primer nombre
+- `first_lastname` (string, opcional): Primer apellido
+- `birth_date_from` (date, opcional): Fecha de nacimiento desde (YYYY-MM-DD)
+- `birth_date_to` (date, opcional): Fecha de nacimiento hasta (YYYY-MM-DD)
+- `municipality_code` (string, opcional): Código del municipio
+- `municipality_name` (string, opcional): Nombre del municipio
+- `subregion` (string, opcional): Subregión
+- `age_min` (int, opcional): Edad mínima (0-150)
+- `age_max` (int, opcional): Edad máxima (0-150)
+- `entity` (string, opcional): Entidad
+- `gender` (string, opcional): Género
+- `care_type` (string, opcional): Tipo de atención
+- `date_from` (string, opcional): Fecha de creación desde (YYYY-MM-DD)
+- `date_to` (string, opcional): Fecha de creación hasta (YYYY-MM-DD)
+- `skip` (int, opcional): Registros a omitir
+- `limit` (int, opcional): Límite de registros
+
+**Response** (200):
+```json
+{
+  "patients": [
+    {
+      "id": "507f1f77bcf86cd799439011",
+      "patient_code": "1-12345678",
+      "identification_type": 1,
+      "identification_number": "12345678",
+      "first_name": "Juan",
+      "second_name": "Carlos",
+      "first_lastname": "Pérez",
+      "second_lastname": "García",
+      "birth_date": "1990-05-15",
+      "gender": "Masculino",
+      "location": {
+        "municipality_code": "05001",
+        "municipality_name": "Medellín",
+        "subregion": "Valle de Aburrá",
+        "address": "Calle 123 #45-67"
+      },
+      "entity_info": {
+        "id": "EPS001",
+        "name": "EPS Sura"
+      },
+      "care_type": "Ambulatorio",
+      "observations": "Paciente con antecedentes familiares",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "total": 1,
+  "skip": 0,
+  "limit": 100
+}
+```
+
+### 4. Obtener Total de Pacientes
+- **Endpoint**: `GET /api/v1/patients/count`
+- **Descripción**: Obtiene el número total de pacientes registrados
+- **Autenticación**: Requerida
+
+**Response** (200):
+```json
+{
+  "total": 1250
+}
+```
+
+### 5. Obtener Paciente por Código
+- **Endpoint**: `GET /api/v1/patients/{patient_code}`
+- **Descripción**: Obtiene un paciente específico por su código
+- **Autenticación**: Requerida
+
+**Path Parameters**:
+- `patient_code` (string): Código único del paciente (ej: "1-12345678")
+
+**Response** (200):
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "patient_code": "1-12345678",
+  "identification_type": 1,
+  "identification_number": "12345678",
+  "first_name": "Juan",
+  "second_name": "Carlos",
+  "first_lastname": "Pérez",
+  "second_lastname": "García",
+  "birth_date": "1990-05-15",
+  "gender": "Masculino",
+  "location": {
+    "municipality_code": "05001",
+    "municipality_name": "Medellín",
+    "subregion": "Valle de Aburrá",
+    "address": "Calle 123 #45-67"
+  },
+  "entity_info": {
+    "id": "EPS001",
+    "name": "EPS Sura"
+  },
+  "care_type": "Ambulatorio",
+  "observations": "Paciente con antecedentes familiares",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+### 6. Actualizar Paciente
+- **Endpoint**: `PUT /api/v1/patients/{patient_code}`
+- **Descripción**: Actualiza la información de un paciente existente
+- **Autenticación**: Requerida
+
+**Path Parameters**:
+- `patient_code` (string): Código único del paciente
+
+**Request Body** (campos opcionales):
+```json
+{
+  "first_name": "Juan Carlos",
+  "location": {
+    "municipality_code": "05001",
+    "municipality_name": "Medellín",
+    "subregion": "Valle de Aburrá",
+    "address": "Carrera 45 #123-67"
+  },
+  "observations": "Paciente actualizado con nueva dirección"
+}
+```
+
+**Response** (200):
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "patient_code": "1-12345678",
+  "identification_type": 1,
+  "identification_number": "12345678",
+  "first_name": "Juan Carlos",
+  "second_name": "Carlos",
+  "first_lastname": "Pérez",
+  "second_lastname": "García",
+  "birth_date": "1990-05-15",
+  "gender": "Masculino",
+  "location": {
+    "municipality_code": "05001",
+    "municipality_name": "Medellín",
+    "subregion": "Valle de Aburrá",
+    "address": "Carrera 45 #123-67"
+  },
+  "entity_info": {
+    "id": "EPS001",
+    "name": "EPS Sura"
+  },
+  "care_type": "Ambulatorio",
+  "observations": "Paciente actualizado con nueva dirección",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T14:45:00Z"
+}
+```
+
+### 7. Cambiar Identificación del Paciente
+- **Endpoint**: `PUT /api/v1/patients/{patient_code}/change-identification`
+- **Descripción**: Cambia el tipo y número de identificación de un paciente
+- **Autenticación**: Requerida
+
+**Path Parameters**:
+- `patient_code` (string): Código actual del paciente
+
+**Query Parameters**:
+- `new_identification_type` (int): Nuevo tipo de identificación (1-9)
+- `new_identification_number` (string): Nuevo número de identificación
+
+**Ejemplo de Request**:
+```
+PUT /api/v1/patients/1-12345678/change-identification?new_identification_type=2&new_identification_number=87654321
+```
+
+**Response** (200):
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "patient_code": "2-87654321",
+  "identification_type": 2,
+  "identification_number": "87654321",
+  "first_name": "Juan",
+  "second_name": "Carlos",
+  "first_lastname": "Pérez",
+  "second_lastname": "García",
+  "birth_date": "1990-05-15",
+  "gender": "Masculino",
+  "location": {
+    "municipality_code": "05001",
+    "municipality_name": "Medellín",
+    "subregion": "Valle de Aburrá",
+    "address": "Calle 123 #45-67"
+  },
+  "entity_info": {
+    "id": "EPS001",
+    "name": "EPS Sura"
+  },
+  "care_type": "Ambulatorio",
+  "observations": "Paciente con antecedentes familiares",
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T16:20:00Z"
+}
+```
+
+### 8. Eliminar Paciente
+- **Endpoint**: `DELETE /api/v1/patients/{patient_code}`
+- **Descripción**: Elimina un paciente del sistema
+- **Autenticación**: Requerida
+
+**Path Parameters**:
+- `patient_code` (string): Código único del paciente
+
+**Response** (200):
+```json
+{
+  "message": "Patient 1-12345678 deleted successfully"
+}
+```
+
+## Modelos de Datos
+
+### Patient (Modelo de Base de Datos)
+```python
+class Patient(BaseDocument):
+    identification_type: IdentificationType
+    identification_number: str
+    first_name: str
+    second_name: Optional[str]
+    first_lastname: str
+    second_lastname: Optional[str]
+    birth_date: date
+    gender: Gender
+    location: Location
+    entity_info: EntityInfo
+    care_type: CareType
+    observations: Optional[str]
+```
+
+### Enumeraciones
+
+#### IdentificationType
+```python
+class IdentificationType(int, Enum):
+    CEDULA_CIUDADANIA = 1      # Cédula de Ciudadanía
+    CEDULA_EXTRANJERIA = 2     # Cédula de Extranjería
+    TARJETA_IDENTIDAD = 3      # Tarjeta de Identidad
+    PASAPORTE = 4              # Pasaporte
+    REGISTRO_CIVIL = 5         # Registro Civil
+    DOCUMENTO_EXTRANJERO = 6   # Documento Extranjero
+    NIT = 7                    # NIT
+    CARNET_DIPLOMATICO = 8     # Carnet Diplomático
+    SALVOCONDUCTO = 9          # Salvoconducto
+```
+
+#### Gender
+```python
+class Gender(str, Enum):
+    MASCULINO = "Masculino"
+    FEMENINO = "Femenino"
+```
+
+#### CareType
+```python
+class CareType(str, Enum):
+    AMBULATORIO = "Ambulatorio"
+    HOSPITALIZADO = "Hospitalizado"
+```
+
+## Esquemas de Validación
+
+### PatientCreate
+- Esquema para crear nuevos pacientes
+- Todos los campos requeridos excepto `patient_code` (se genera automáticamente)
+- Validaciones de formato para nombres y números de identificación
+
+### PatientUpdate
+- Esquema para actualizar pacientes existentes
+- Todos los campos son opcionales
+- Mantiene las mismas validaciones que PatientCreate
+
+### PatientResponse
+- Esquema de respuesta que incluye campos adicionales:
+  - `id`: ID único del documento
+  - `created_at`: Fecha de creación
+  - `updated_at`: Fecha de última actualización
+
+### PatientSearch
+- Esquema para búsquedas avanzadas
+- Incluye todos los campos de búsqueda posibles
+- Validaciones para rangos de edad y fechas
+
+### Esquemas Auxiliares
+
+#### EntityInfo
+```python
+class EntityInfo(BaseModel):
+    id: str                    # ID de la entidad
+    name: str                  # Nombre de la entidad
+```
+
+#### Location
+```python
+class Location(BaseModel):
+    municipality_code: str     # Código del municipio
+    municipality_name: str     # Nombre del municipio
+    subregion: str            # Subregión
+    address: str              # Dirección de residencia
+```
+
+## Lógica de Negocio (PatientService)
+
+### Métodos Principales
+
+#### `create_patient(patient: PatientCreate) -> PatientResponse`
+- Crea un nuevo paciente en el sistema
+- Genera automáticamente el `patient_code` si no se proporciona
+- Valida que no exista duplicación de identificación
+
+#### `get_patient_by_code(patient_code: str) -> PatientResponse`
+- Obtiene un paciente por su código único
+- Lanza `NotFoundError` si el paciente no existe
+
+#### `update_patient(patient_code: str, patient_update: PatientUpdate) -> PatientResponse`
+- Actualiza la información de un paciente existente
+- Solo actualiza los campos proporcionados
+
+#### `change_patient_identification(patient_code: str, new_identification_type: str, new_identification_number: str) -> PatientResponse`
+- Cambia la identificación de un paciente
+- Actualiza automáticamente el `patient_code`
+- Actualiza referencias en casos relacionados
+
+#### `delete_patient(patient_code: str) -> bool`
+- Elimina un paciente del sistema
+- Retorna `True` si la eliminación fue exitosa
+
+#### `list_patients(...) -> List[PatientResponse]`
+- Lista pacientes con filtros opcionales
+- Soporta paginación y búsqueda por texto
+
+#### `advanced_search(search_params: PatientSearch) -> Dict[str, Any]`
+- Realiza búsquedas avanzadas con múltiples criterios
+- Retorna resultados paginados con total de registros
+
+#### `get_total_count() -> int`
+- Obtiene el número total de pacientes registrados
+
+## Acceso a Datos (PatientRepository)
+
+### Características Principales
+
+#### Índices de Base de Datos
+- Índice único en `patient_code`
+- Índice compuesto único en `identification_type` + `identification_number`
+- Índice de texto completo para búsquedas por nombre
+- Índices individuales para filtros comunes (género, tipo de atención, etc.)
+
+#### Métodos de Búsqueda
+
+##### `list_with_filters(...)`
+- Búsqueda básica con filtros simples
+- Soporta búsqueda por texto en nombres y números de identificación
+- Optimizada para consultas frecuentes
+
+##### `advanced_search(search_params: PatientSearch)`
+- Búsqueda avanzada con múltiples criterios
+- Utiliza agregación de MongoDB para mejor rendimiento
+- Soporta filtros por rango de edad y fechas
+- Retorna resultados paginados con conteo total
+
+#### Optimizaciones
+- Uso de proyecciones para limitar campos retornados
+- Consultas optimizadas con índices apropiados
+- Agregación para búsquedas complejas con conteo
+
+### Validaciones y Manejo de Errores
+
+#### Validaciones de Entrada
+- Números de identificación: solo dígitos, longitud 5-12
+- Nombres: solo letras, espacios y caracteres especiales permitidos
+- Fechas: formato ISO y rangos válidos
+- Rangos de edad: 0-150 años
+
+#### Manejo de Errores
+- `ConflictError`: Duplicación de identificación
+- `NotFoundError`: Paciente no encontrado
+- `BadRequestError`: Datos de entrada inválidos
+- Logging detallado para debugging
+
+## Integración con Otros Módulos
+
+### Módulo de Casos
+- Actualización automática de referencias cuando cambia la identificación del paciente
+- Relación a través del campo `patient.patient_code` en casos
+
+### Configuración de Entorno
+- Variables de configuración para límites de paginación
+- Configuración de índices de base de datos
+
+## Consideraciones de Seguridad
+
+### Validación de Datos
+- Sanitización de entrada para prevenir inyección
+- Validación estricta de tipos de datos
+- Límites en longitud de campos de texto
+
+### Manejo de Errores
+- No exposición de detalles internos en respuestas de error
+- Logging seguro sin información sensible
+- Validación de permisos en endpoints protegidos

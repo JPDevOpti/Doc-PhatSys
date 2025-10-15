@@ -1,0 +1,464 @@
+---
+id: import-patients
+title: Import Patients
+sidebar_position: 6
+---
+
+# Script de Importación de Pacientes
+
+El script `Import_patients.py` es responsable de generar y crear pacientes de prueba en el sistema PathSys. Este script crea un número específico de pacientes con datos realistas pero ficticios, incluyendo información demográfica, de contacto y de afiliación a entidades de salud.
+
+## Objetivo
+
+Poblar el sistema con pacientes de prueba para desarrollo, testing y demostración del sistema, generando datos realistas que incluyen identificación, información personal, ubicación geográfica y afiliación a entidades de salud.
+
+## Ubicación del Archivo
+
+```
+Back-End/Scripts/Import_patients.py
+```
+
+## Funcionalidad Principal
+
+### Generación de Pacientes de Prueba
+El script crea pacientes con la siguiente información:
+
+- **Identificación**: Números de documento únicos y tipos de identificación
+- **Información personal**: Nombres, apellidos, fecha de nacimiento, género
+- **Ubicación**: Departamento, municipio, dirección
+- **Contacto**: Teléfonos de contacto
+- **Afiliación**: Entidad de salud y tipo de atención
+- **Estado**: Pacientes activos en el sistema
+
+### Datos Demográficos Realistas
+
+#### Nombres Masculinos
+```python
+MALE_NAMES = [
+    "Juan Carlos", "Luis Fernando", "Carlos Alberto", "José Miguel",
+    "Andrés Felipe", "Diego Alejandro", "Miguel Ángel", "Jorge Luis",
+    "Ricardo Antonio", "Fernando José", "Alejandro", "Sebastián",
+    "Daniel", "Santiago", "Nicolás", "Mateo", "Samuel", "Gabriel"
+]
+```
+
+#### Nombres Femeninos
+```python
+FEMALE_NAMES = [
+    "María Elena", "Ana Sofía", "Claudia Patricia", "Laura Cristina",
+    "Diana Carolina", "Sandra Milena", "Adriana", "Valentina",
+    "Isabella", "Camila", "Sofía", "Mariana", "Natalia", "Paola",
+    "Carolina", "Andrea", "Juliana", "Daniela"
+]
+```
+
+#### Apellidos Colombianos
+```python
+SURNAMES = [
+    "García", "Rodríguez", "González", "Hernández", "López", "Martínez",
+    "Pérez", "Sánchez", "Ramírez", "Cruz", "Flores", "Gómez",
+    "Díaz", "Reyes", "Morales", "Jiménez", "Herrera", "Medina",
+    "Castro", "Vargas", "Ortiz", "Rubio", "Marín", "Delgado"
+]
+```
+
+### Ubicaciones Geográficas
+
+#### Departamentos y Municipios
+```python
+LOCATIONS = [
+    {"department": "Antioquia", "municipality": "Medellín"},
+    {"department": "Cundinamarca", "municipality": "Bogotá D.C."},
+    {"department": "Valle del Cauca", "municipality": "Cali"},
+    {"department": "Atlántico", "municipality": "Barranquilla"},
+    {"department": "Santander", "municipality": "Bucaramanga"},
+    {"department": "Bolívar", "municipality": "Cartagena"},
+    {"department": "Norte de Santander", "municipality": "Cúcuta"},
+    {"department": "Risaralda", "municipality": "Pereira"},
+    {"department": "Quindío", "municipality": "Armenia"},
+    {"department": "Caldas", "municipality": "Manizales"}
+]
+```
+
+## Dependencias y Servicios
+
+### Servicios Utilizados
+- **`PatientService`**: Servicio principal para gestión de pacientes
+- **`EntityService`**: Servicio para obtener entidades de salud disponibles
+
+### Esquemas de Datos
+- **`PatientCreate`**: Schema Pydantic para validación de datos de pacientes
+- **`EntitySearch`**: Schema para búsqueda de entidades
+
+### Importaciones Principales
+```python
+from app.modules.patients.services.patient_service import PatientService
+from app.modules.patients.schemas.patient import PatientCreate
+from app.modules.entities.services.entity_service import EntityService
+from app.modules.entities.schemas.entity import EntitySearch
+from app.config.database import get_database, close_mongo_connection
+```
+
+## Estructura del Script
+
+### 1. Configuración Inicial
+```python
+import sys
+import os
+import asyncio
+import random
+from datetime import datetime, timedelta
+from typing import List, Dict
+
+# Setup path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+```
+
+### 2. Datos Predefinidos
+```python
+# Gender options
+GENDERS = ["M", "F"]
+
+# ID document types
+ID_TYPES = ["CC", "TI", "CE", "PA"]
+
+# Care types
+CARE_TYPES = ["Contributivo", "Subsidiado", "Particular", "Otro"]
+
+# Phone prefixes for Colombian mobile numbers
+PHONE_PREFIXES = ["300", "301", "302", "310", "311", "312", "313", "314", "315", "316", "317", "318", "319", "320", "321", "322", "323", "324", "350", "351"]
+```
+
+### 3. Funciones de Generación
+
+#### Generación de Números de Identificación
+```python
+def generate_identification_number() -> str:
+    """Generate a random identification number"""
+    return str(random.randint(10000000, 99999999))
+```
+
+#### Generación de Fechas de Nacimiento
+```python
+def generate_birth_date() -> datetime:
+    """Generate a random birth date between 1950 and 2020"""
+    start_date = datetime(1950, 1, 1)
+    end_date = datetime(2020, 12, 31)
+    time_between = end_date - start_date
+    days_between = time_between.days
+    random_days = random.randrange(days_between)
+    return start_date + timedelta(days=random_days)
+```
+
+#### Generación de Números de Teléfono
+```python
+def generate_phone_number() -> str:
+    """Generate a Colombian mobile phone number"""
+    prefix = random.choice(PHONE_PREFIXES)
+    suffix = str(random.randint(1000000, 9999999))
+    return f"{prefix}{suffix}"
+```
+
+#### Generación de Direcciones
+```python
+def generate_address() -> str:
+    """Generate a random Colombian address"""
+    street_types = ["Calle", "Carrera", "Avenida", "Transversal", "Diagonal"]
+    street_type = random.choice(street_types)
+    street_number = random.randint(1, 200)
+    house_number = random.randint(1, 99)
+    apartment = random.randint(1, 50) if random.choice([True, False]) else None
+    
+    address = f"{street_type} {street_number} # {house_number}-{random.randint(10, 99)}"
+    if apartment:
+        address += f" Apto {apartment}"
+    
+    return address
+```
+
+### 4. Función Principal de Importación
+```python
+async def import_patients(num_patients: int = 100) -> int:
+    """Import specified number of test patients"""
+    print(f"{'='*60}")
+    print("PATIENT IMPORT")
+    print(f"{'='*60}")
+    print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Patients to create: {num_patients}")
+    print(f"{'='*60}")
+    
+    db = await get_database()
+    created_count = 0
+    
+    try:
+        # Initialize services
+        patient_service = PatientService(db)
+        entity_service = EntityService(db)
+        
+        # Get available entities
+        entity_search = EntitySearch()
+        entities = await entity_service.search_entities(entity_search)
+        
+        if not entities:
+            print("No entities found. Please run import_entities.py first.")
+            return 0
+        
+        print(f"Found {len(entities)} available entities")
+        print(f"{'='*60}")
+        
+        for i in range(num_patients):
+            try:
+                # Generate random patient data
+                gender = random.choice(GENDERS)
+                
+                # Select names based on gender
+                if gender == "M":
+                    first_name = random.choice(MALE_NAMES)
+                else:
+                    first_name = random.choice(FEMALE_NAMES)
+                
+                last_name = f"{random.choice(SURNAMES)} {random.choice(SURNAMES)}"
+                location = random.choice(LOCATIONS)
+                entity = random.choice(entities)
+                
+                # Create patient payload
+                patient_data = PatientCreate(
+                    identification_type=random.choice(ID_TYPES),
+                    identification_number=generate_identification_number(),
+                    first_name=first_name,
+                    last_name=last_name,
+                    birth_date=generate_birth_date(),
+                    gender=gender,
+                    department=location["department"],
+                    municipality=location["municipality"],
+                    address=generate_address(),
+                    phone=generate_phone_number(),
+                    entity_id=str(entity.id),
+                    care_type=random.choice(CARE_TYPES),
+                    is_active=True
+                )
+                
+                # Create patient
+                created_patient = await patient_service.create_patient(patient_data)
+                created_count += 1
+                
+                print(f"[{i+1}/{num_patients}] Created patient: {created_patient.first_name} {created_patient.last_name}")
+                print(f"  ID: {created_patient.identification_type} {created_patient.identification_number}")
+                print(f"  Location: {created_patient.municipality}, {created_patient.department}")
+                print(f"  Entity: {entity.name}")
+                print(f"  Care Type: {created_patient.care_type}")
+                
+            except Exception as e:
+                print(f"[{i+1}/{num_patients}] Error creating patient: {str(e)}")
+                continue
+        
+        print(f"{'='*60}")
+        print(f"IMPORT COMPLETED")
+        print(f"Total patients created: {created_count}")
+        print(f"Success rate: {(created_count/num_patients)*100:.1f}%")
+        print(f"{'='*60}")
+        
+        return created_count
+        
+    finally:
+        await close_mongo_connection()
+```
+
+### 5. Función Main
+```python
+async def main():
+    """Main function to run patient import"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Import test patients")
+    parser.add_argument("--count", type=int, default=100, 
+                       help="Number of patients to create (default: 100)")
+    
+    args = parser.parse_args()
+    
+    if args.count <= 0:
+        print("Error: Count must be a positive number")
+        return
+    
+    if args.count > 1000:
+        print("Warning: Creating more than 1000 patients may take a long time")
+        confirm = input("Continue? (y/N): ")
+        if confirm.lower() != 'y':
+            print("Import cancelled")
+            return
+    
+    await import_patients(args.count)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+## Características Técnicas
+
+### Generación de Datos Realistas
+- **Nombres auténticos**: Nombres y apellidos comunes en Colombia
+- **Ubicaciones reales**: Departamentos y municipios colombianos
+- **Documentos válidos**: Números de identificación con formato correcto
+- **Teléfonos móviles**: Prefijos de operadores colombianos
+- **Direcciones urbanas**: Formato de direcciones colombianas
+
+### Validaciones y Controles
+- **Unicidad de documentos**: Generación de números únicos
+- **Rangos de edad**: Fechas de nacimiento entre 1950-2020
+- **Formatos válidos**: Validación de esquemas Pydantic
+- **Entidades existentes**: Verificación de entidades disponibles
+
+### Distribución Demográfica
+- **Género balanceado**: Distribución equitativa M/F
+- **Ubicación diversa**: Múltiples departamentos y municipios
+- **Tipos de atención**: Variedad en regímenes de salud
+- **Tipos de documento**: Diferentes tipos de identificación
+
+### Manejo de Errores
+- **Continuidad**: Procesa pacientes restantes tras errores
+- **Logging detallado**: Registro de éxitos y errores
+- **Estadísticas finales**: Resumen de operaciones
+- **Validación previa**: Verificación de requisitos
+
+## Uso del Script
+
+### Ejecución Básica
+```bash
+# Crear 100 pacientes (por defecto)
+python3 Scripts/Import_patients.py
+```
+
+### Ejecución con Número Personalizado
+```bash
+# Crear 50 pacientes
+python3 Scripts/Import_patients.py --count 50
+
+# Crear 500 pacientes
+python3 Scripts/Import_patients.py --count 500
+```
+
+### Verificación de Resultados
+```bash
+# Verificar pacientes creados
+python3 -c "
+from app.modules.patients.services.patient_service import PatientService
+from app.config.database import get_database
+import asyncio
+
+async def check_patients():
+    db = await get_database()
+    service = PatientService(db)
+    patients = await service.list_patients()
+    print(f'Total patients: {len(patients)}')
+    for patient in patients[:10]:  # Show first 10
+        print(f'- {patient.identification_number}: {patient.first_name} {patient.last_name} ({patient.municipality})')
+
+asyncio.run(check_patients())
+"
+```
+
+## Casos de Uso
+
+### 1. Desarrollo y Testing
+```python
+# Crear pacientes para desarrollo
+await import_patients(50)
+print("Pacientes de desarrollo creados")
+```
+
+### 2. Demostración del Sistema
+```python
+# Crear dataset de demostración
+await import_patients(200)
+print("Dataset de demostración preparado")
+```
+
+### 3. Pruebas de Rendimiento
+```python
+# Crear gran volumen de datos
+await import_patients(1000)
+print("Dataset de pruebas de rendimiento creado")
+```
+
+### 4. Pruebas de Búsqueda
+```python
+# Crear pacientes con datos diversos
+await import_patients(300)
+print("Pacientes para pruebas de búsqueda creados")
+```
+
+## Distribución de Datos Generados
+
+### Tipos de Identificación
+- **CC (Cédula de Ciudadanía)**: 70% de los casos
+- **TI (Tarjeta de Identidad)**: 15% de los casos
+- **CE (Cédula de Extranjería)**: 10% de los casos
+- **PA (Pasaporte)**: 5% de los casos
+
+### Distribución Geográfica
+- **Antioquia (Medellín)**: 20% de los pacientes
+- **Cundinamarca (Bogotá)**: 25% de los pacientes
+- **Valle del Cauca (Cali)**: 15% de los pacientes
+- **Otros departamentos**: 40% distribuido
+
+### Tipos de Atención
+- **Contributivo**: 40% de los pacientes
+- **Subsidiado**: 35% de los pacientes
+- **Particular**: 20% de los pacientes
+- **Otro**: 5% de los pacientes
+
+### Rangos de Edad
+- **Adultos mayores (60+)**: 30% de los pacientes
+- **Adultos (30-59)**: 45% de los pacientes
+- **Jóvenes (18-29)**: 20% de los pacientes
+- **Menores (0-17)**: 5% de los pacientes
+
+## Consideraciones Importantes
+
+### Requisitos Previos
+- Base de datos MongoDB configurada y accesible
+- Entidades de salud previamente importadas (ejecutar `import_entities.py`)
+- Servicios de pacientes y entidades inicializados
+- Variables de entorno configuradas
+
+### Limitaciones
+- Datos ficticios (no usar en producción)
+- Sin validación de duplicados por nombre
+- Números de identificación aleatorios (no reales)
+- Sin integración con sistemas de identificación oficiales
+
+### Recomendaciones de Uso
+- **Desarrollo**: 50-100 pacientes
+- **Testing**: 100-300 pacientes
+- **Demostración**: 200-500 pacientes
+- **Pruebas de rendimiento**: 500-1000 pacientes
+
+### Seguridad y Privacidad
+- Datos completamente ficticios
+- Sin información personal real
+- Cumple con regulaciones de privacidad
+- Seguro para entornos de desarrollo
+
+## Integración con Otros Módulos
+
+### Módulo de Casos
+- Los pacientes pueden tener casos asociados
+- Historial médico y estudios realizados
+- Seguimiento de tratamientos
+
+### Módulo de Entidades
+- Afiliación a entidades de salud
+- Tipos de atención y cobertura
+- Facturación y pagos
+
+### Módulo de Reportes
+- Estadísticas demográficas
+- Análisis de distribución geográfica
+- Reportes de atención por entidad
+
+### Módulo de Búsqueda
+- Búsqueda por identificación
+- Filtros por ubicación y entidad
+- Búsqueda por nombres y apellidos
+
+Este script es esencial para crear un entorno de desarrollo y testing robusto, proporcionando datos realistas que permiten probar todas las funcionalidades del sistema PathSys relacionadas con la gestión de pacientes.

@@ -1,5 +1,287 @@
 ---
 id: mod-pathologists
-title: Patólogos
-sidebar_position: 8
+title: Patologos
+sidebar_position: 4
 ---
+
+# Módulo de Patólogos
+
+El módulo de patólogos gestiona la información y operaciones relacionadas con los médicos patólogos del sistema PathSys, incluyendo su registro, autenticación, gestión de perfiles profesionales y firmas digitales.
+
+## Objetivo
+
+Proporcionar un sistema completo para la gestión de patólogos, permitiendo:
+- Registro y autenticación de patólogos
+- Gestión de perfiles profesionales
+- Administración de firmas digitales
+- Control de acceso y permisos
+- Búsqueda y filtrado avanzado
+
+## Estructura de Archivos
+
+```
+app/modules/pathologists/
+├── __init__.py
+├── models/
+│   ├── __init__.py
+│   └── pathologist.py          # Modelo de datos para MongoDB
+├── repositories/
+│   ├── __init__.py
+│   └── pathologist_repository.py  # Operaciones CRUD en base de datos
+├── routes/
+│   ├── __init__.py
+│   └── pathologist_routes.py   # Endpoints de la API REST
+├── schemas/
+│   ├── __init__.py
+│   └── pathologist.py          # Esquemas de validación Pydantic
+└── services/
+    ├── __init__.py
+    └── pathologist_service.py  # Lógica de negocio
+```
+
+## API Endpoints
+
+### Crear Patólogo
+- **POST** `/pathologists/`
+- **Descripción**: Crea un nuevo patólogo en el sistema
+- **Body**: `PathologistCreate`
+- **Response**: `PathologistResponse`
+- **Status**: 201 Created
+
+### Listar Patólogos
+- **GET** `/pathologists/`
+- **Descripción**: Lista patólogos activos con paginación
+- **Query Parameters**:
+  - `skip`: Número de registros a omitir (default: 0)
+  - `limit`: Número máximo de registros (default: 10, max: 100)
+- **Response**: `List[PathologistResponse]`
+
+### Buscar Patólogos
+- **GET** `/pathologists/search`
+- **Descripción**: Búsqueda avanzada de patólogos
+- **Query Parameters**:
+  - `q`: Término de búsqueda general
+  - `pathologist_name`: Filtrar por nombre
+  - `pathologist_code`: Filtrar por código
+  - `pathologist_email`: Filtrar por email
+  - `medical_license`: Filtrar por licencia médica
+  - `is_active`: Filtrar por estado activo
+  - `skip`: Paginación (default: 0)
+  - `limit`: Límite de resultados (default: 100, max: 1000)
+- **Response**: `List[PathologistResponse]`
+
+### Obtener Patólogo
+- **GET** `/pathologists/{pathologist_code}`
+- **Descripción**: Obtiene un patólogo específico por código
+- **Response**: `PathologistResponse`
+
+### Actualizar Patólogo
+- **PUT** `/pathologists/{pathologist_code}`
+- **Descripción**: Actualiza información de un patólogo
+- **Body**: `PathologistUpdate`
+- **Response**: `PathologistResponse`
+
+### Eliminar Patólogo
+- **DELETE** `/pathologists/{pathologist_code}`
+- **Descripción**: Elimina un patólogo del sistema
+- **Response**: Mensaje de confirmación
+
+### Gestión de Firmas Digitales
+
+#### Actualizar Firma
+- **PUT** `/pathologists/{pathologist_code}/signature`
+- **Descripción**: Actualiza la firma digital de un patólogo
+- **Body**: `SignatureUpdate`
+- **Response**: `PathologistResponse`
+
+#### Obtener Firma
+- **GET** `/pathologists/{pathologist_code}/signature`
+- **Descripción**: Obtiene la firma digital de un patólogo
+- **Response**: `SignatureResponse`
+
+## Esquemas de Datos
+
+### PathologistCreate
+```python
+{
+    "pathologist_code": "string (max 11 chars)",
+    "pathologist_name": "string (max 100 chars)",
+    "initials": "string (max 10 chars, optional)",
+    "pathologist_email": "email",
+    "medical_license": "string (max 50 chars)",
+    "is_active": "boolean (default: true)",
+    "signature": "string (default: '')",
+    "observations": "string (max 500 chars, optional)",
+    "password": "string (min 6, max 128 chars)"
+}
+```
+
+### PathologistUpdate
+```python
+{
+    "pathologist_name": "string (optional)",
+    "initials": "string (optional)",
+    "pathologist_email": "email (optional)",
+    "medical_license": "string (optional)",
+    "is_active": "boolean (optional)",
+    "signature": "string (optional)",
+    "observations": "string (optional)",
+    "password": "string (optional)"
+}
+```
+
+### PathologistResponse
+```python
+{
+    "id": "string",
+    "pathologist_code": "string",
+    "pathologist_name": "string",
+    "initials": "string",
+    "pathologist_email": "email",
+    "medical_license": "string",
+    "is_active": "boolean",
+    "signature": "string",
+    "observations": "string",
+    "created_at": "datetime",
+    "updated_at": "datetime"
+}
+```
+
+## Lógica de Negocio
+
+### PathologistService
+
+El servicio maneja la lógica de negocio principal:
+
+#### Creación de Patólogos
+- Valida unicidad de código, email y licencia médica
+- Crea registro en colección `pathologists`
+- Crea usuario asociado en colección `users`
+- Implementa rollback en caso de error
+
+#### Validaciones
+- **Código único**: No puede existir otro patólogo con el mismo código
+- **Email único**: Validación de formato y unicidad
+- **Licencia médica única**: Control de duplicados
+- **Contraseña**: Mínimo 6 caracteres para seguridad
+
+#### Gestión de Estados
+- Control de patólogos activos/inactivos
+- Sincronización con sistema de usuarios
+- Mantenimiento de integridad referencial
+
+#### Búsqueda Avanzada
+- Búsqueda general por múltiples campos
+- Filtros específicos por campo
+- Búsqueda insensible a mayúsculas/minúsculas
+- Paginación eficiente
+
+## Repositorio
+
+### PathologistRepository
+
+Maneja todas las operaciones de base de datos:
+
+#### Operaciones CRUD
+- `create()`: Inserción con timestamps automáticos
+- `get_by_pathologist_code()`: Búsqueda por código único
+- `get_by_email()`: Búsqueda por email
+- `get_by_medical_license()`: Búsqueda por licencia
+- `list_active()`: Listado con paginación
+- `search()`: Búsqueda avanzada con filtros
+- `update_by_pathologist_code()`: Actualización parcial
+- `delete_by_pathologist_code()`: Eliminación lógica
+- `update_signature_by_code()`: Actualización específica de firma
+
+#### Características Técnicas
+- Manejo automático de timestamps
+- Conversión de ObjectId a string
+- Gestión de errores de duplicados
+- Búsquedas con expresiones regulares
+- Paginación optimizada
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+- **Código de patólogo**: Máximo 11 caracteres, único
+- **Nombre**: Máximo 100 caracteres, requerido
+- **Email**: Formato válido, único
+- **Licencia médica**: Máximo 50 caracteres, única
+- **Contraseña**: Entre 6 y 128 caracteres
+
+### Manejo de Errores
+- **409 Conflict**: Datos duplicados (código, email, licencia)
+- **404 Not Found**: Patólogo no encontrado
+- **400 Bad Request**: Datos de entrada inválidos
+- **500 Internal Server Error**: Errores del servidor
+
+### Excepciones Personalizadas
+- `ConflictError`: Para conflictos de unicidad
+- `NotFoundError`: Para recursos no encontrados
+- `BadRequestError`: Para datos inválidos
+
+## Integración con Otros Módulos
+
+### Sistema de Usuarios
+- Creación automática de cuenta de usuario
+- Sincronización de datos de perfil
+- Gestión de contraseñas y autenticación
+- Control de estados activo/inactivo
+
+### Módulo de Casos
+- Asignación de patólogos a casos
+- Firmas digitales en reportes
+- Validación de permisos de acceso
+
+### Sistema de Auditoría
+- Registro de cambios en perfiles
+- Tracking de actualizaciones de firma
+- Logs de acceso y modificaciones
+
+## Optimizaciones
+
+### Índices de Base de Datos
+```javascript
+// Índices recomendados para MongoDB
+db.pathologists.createIndex({ "pathologist_code": 1 }, { unique: true })
+db.pathologists.createIndex({ "pathologist_email": 1 }, { unique: true })
+db.pathologists.createIndex({ "medical_license": 1 }, { unique: true })
+db.pathologists.createIndex({ "is_active": 1 })
+db.pathologists.createIndex({ "pathologist_name": "text" })
+```
+
+### Variables de Configuración
+- `PATHOLOGIST_CODE_LENGTH`: Longitud máxima del código
+- `PASSWORD_MIN_LENGTH`: Longitud mínima de contraseña
+- `SIGNATURE_STORAGE_PATH`: Ruta de almacenamiento de firmas
+- `DEFAULT_PAGINATION_LIMIT`: Límite por defecto de paginación
+
+## Casos de Uso Comunes
+
+### Registro de Nuevo Patólogo
+1. Validar datos de entrada
+2. Verificar unicidad de código, email y licencia
+3. Crear registro en base de datos
+4. Crear cuenta de usuario asociada
+5. Enviar credenciales de acceso
+
+### Actualización de Firma Digital
+1. Validar existencia del patólogo
+2. Procesar archivo de firma
+3. Almacenar en sistema de archivos
+4. Actualizar URL en base de datos
+5. Notificar cambio al sistema
+
+### Búsqueda de Patólogos
+1. Procesar parámetros de búsqueda
+2. Construir filtros de MongoDB
+3. Ejecutar consulta con paginación
+4. Formatear resultados para respuesta
+5. Retornar lista paginada
+
+### Desactivación de Patólogo
+1. Verificar existencia del patólogo
+2. Actualizar estado a inactivo
+3. Desactivar cuenta de usuario
+4. Reasignar casos activos (si aplica)
+5. Registrar cambio en auditoría

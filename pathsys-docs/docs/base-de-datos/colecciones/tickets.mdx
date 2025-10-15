@@ -1,0 +1,202 @@
+# Colección: Tickets
+
+## Descripción General
+La colección `tickets` gestiona el sistema de soporte técnico y seguimiento de incidencias en PathSys, permitiendo a los usuarios reportar problemas, solicitar funcionalidades y hacer consultas técnicas.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `ticket_code` | String | Sí | Código único del ticket (T-YYYY-NNN) |
+| `title` | String | Sí | Título del ticket |
+| `category` | Enum | Sí | Categoría del ticket |
+| `description` | String | Sí | Descripción detallada del problema |
+| `image` | String | No | URL de imagen adjunta |
+| `ticket_date` | DateTime | Sí | Fecha de creación del ticket |
+| `status` | Enum | Sí | Estado actual del ticket |
+| `created_by` | String | Sí | ID del usuario que creó el ticket |
+| `created_at` | DateTime | Sí | Fecha de creación del registro |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Enumeraciones
+
+### TicketCategoryEnum
+```python
+class TicketCategoryEnum(str, Enum):
+    BUG = "bug"                # Error en el sistema
+    FEATURE = "feature"        # Solicitud de nueva funcionalidad
+    QUESTION = "question"      # Consulta general
+    TECHNICAL = "technical"    # Problema técnico
+```
+
+### TicketStatusEnum
+```python
+class TicketStatusEnum(str, Enum):
+    OPEN = "open"              # Ticket abierto
+    IN_PROGRESS = "in-progress" # En proceso de resolución
+    RESOLVED = "resolved"       # Resuelto
+    CLOSED = "closed"          # Cerrado
+```
+
+## Validaciones
+
+- **ticket_code**: Máximo 50 caracteres, formato T-YYYY-NNN
+- **title**: Longitud mínima 1, máxima 100 caracteres, no puede estar vacío
+- **description**: Longitud mínima 1, máxima 500 caracteres, no puede estar vacío
+- **category**: Debe ser uno de los valores del enum TicketCategoryEnum
+- **status**: Debe ser uno de los valores del enum TicketStatusEnum
+- **image**: URL válida (opcional)
+- **created_by**: ID válido del usuario que crea el ticket
+
+## Validadores Personalizados
+
+```python
+@field_validator('title', mode='before')
+@classmethod
+def validate_title(cls, v):
+    if not v or not v.strip():
+        raise ValueError('The title cannot be empty')
+    return v.strip()
+
+@field_validator('description', mode='before')
+@classmethod
+def validate_description(cls, v):
+    if not v or not v.strip():
+        raise ValueError('The description cannot be empty')
+    return v.strip()
+
+@field_validator('ticket_code')
+@classmethod
+def validate_ticket_code(cls, v):
+    pattern = r'^T-\d{4}-\d{3}$'
+    if not re.match(pattern, v):
+        raise ValueError('Ticket code must follow format T-YYYY-NNN')
+    return v
+```
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de ticket
+db.tickets.createIndex({ "ticket_code": 1 }, { unique: true })
+
+// Índice para búsquedas por usuario
+db.tickets.createIndex({ "created_by": 1 })
+
+// Índice para filtros por estado
+db.tickets.createIndex({ "status": 1 })
+
+// Índice para filtros por categoría
+db.tickets.createIndex({ "category": 1 })
+
+// Índice para ordenamiento por fecha
+db.tickets.createIndex({ "ticket_date": -1 })
+
+// Índice compuesto para reportes
+db.tickets.createIndex({ 
+  "status": 1, 
+  "category": 1,
+  "ticket_date": -1 
+})
+
+// Índice de texto para búsquedas
+db.tickets.createIndex({ 
+  "title": "text", 
+  "description": "text" 
+})
+```
+
+## Configuración del Modelo
+
+```python
+class Config:
+    populate_by_name = True
+    arbitrary_types_allowed = True
+    json_encoders = {
+        PyObjectId: str,
+        datetime: lambda v: v.isoformat()
+    }
+    from_attributes = True
+```
+
+## Flujo de Estados
+
+```mermaid
+graph LR
+    A[OPEN] --> B[IN_PROGRESS]
+    B --> C[RESOLVED]
+    C --> D[CLOSED]
+    B --> A
+    C --> B
+```
+
+## Generación de Códigos
+
+El formato del código de ticket sigue el patrón:
+- **T**: Prefijo para tickets
+- **YYYY**: Año de creación
+- **NNN**: Número secuencial (001-999)
+
+Ejemplo: `T-2024-001`, `T-2024-002`, etc.
+
+## Relaciones
+
+- **Usuarios**: Cada ticket es creado por un usuario específico
+- **Casos**: Los tickets pueden estar relacionados con casos específicos
+- **Contadores**: Utiliza la colección `consecutive_tickets` para numeración secuencial
+
+## Casos de Uso Principales
+
+1. **Reporte de Errores**: Usuarios reportan bugs del sistema
+2. **Solicitud de Funcionalidades**: Peticiones de nuevas características
+3. **Soporte Técnico**: Consultas y problemas técnicos
+4. **Seguimiento de Incidencias**: Monitoreo del estado de problemas
+5. **Análisis de Problemas**: Identificación de patrones en incidencias
+6. **Gestión de Soporte**: Asignación y resolución de tickets
+
+## Métricas y Reportes
+
+### Métricas de Rendimiento
+- Tiempo promedio de resolución por categoría
+- Número de tickets por estado
+- Distribución de tickets por usuario
+- Tendencias de creación de tickets
+
+### Reportes Comunes
+- Tickets abiertos por categoría
+- Historial de resoluciones
+- Análisis de problemas recurrentes
+- Productividad del equipo de soporte
+
+## Consideraciones de Rendimiento
+
+- Implementar índices para consultas frecuentes por estado y categoría
+- Archivar tickets antiguos cerrados para mantener rendimiento
+- Optimizar búsquedas de texto en título y descripción
+- Considerar particionamiento por año para grandes volúmenes
+- Implementar cache para estadísticas de tickets
+
+## Consideraciones de Seguridad
+
+- Validar permisos antes de crear o modificar tickets
+- Auditar cambios de estado críticos
+- Controlar acceso a tickets por usuario o rol
+- Validar y sanitizar contenido de imágenes adjuntas
+- Implementar rate limiting para prevenir spam
+
+## Integración con Contadores
+
+La colección utiliza `consecutive_tickets` para generar códigos únicos:
+
+```javascript
+// Ejemplo de documento en consecutive_tickets
+{
+  "_id": "tickets_2024",
+  "year": 2024,
+  "current_number": 156,
+  "last_updated": ISODate("2024-01-15T10:30:00Z")
+}
+```

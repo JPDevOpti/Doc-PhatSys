@@ -1,0 +1,346 @@
+---
+id: import-entities
+title: Import Entities
+sidebar_position: 3
+---
+
+# Script de Importación de Entidades
+
+El script `import_entities.py` es responsable de crear entidades de salud en el sistema PathSys, incluyendo hospitales, clínicas, centros de salud y otras instituciones médicas. Este script normaliza automáticamente los nombres y códigos de las entidades para mantener consistencia en la base de datos.
+
+## Objetivo
+
+Poblar el sistema con entidades de salud (hospitales, clínicas, centros médicos) que serán utilizadas para asociar pacientes, casos y servicios médicos dentro del ecosistema PathSys.
+
+## Ubicación del Archivo
+
+```
+Back-End/Scripts/import_entities.py
+```
+
+## Funcionalidad Principal
+
+### Creación de Entidades de Salud
+El script crea entidades con la siguiente información:
+
+- **Datos institucionales**: Nombre completo, código único, tipo de entidad
+- **Información de contacto**: Dirección, teléfono, email institucional
+- **Clasificación**: Tipo de institución (hospital, clínica, centro de salud)
+- **Estado**: Entidades activas por defecto
+
+### Normalización Automática de Datos
+
+#### Normalización de Texto
+```python
+def normalize_text(text: str) -> str:
+    """Normalize text for consistent formatting"""
+    # Remove extra whitespace
+    text = re.sub(r'\s+', ' ', text.strip())
+    # Capitalize properly
+    text = text.title()
+    # Handle special cases
+    text = text.replace(' De ', ' de ').replace(' Del ', ' del ')
+    return text
+```
+
+#### Generación de Códigos
+```python
+def generate_code(name: str) -> str:
+    """Generate entity code from name"""
+    words = name.upper().split()
+    if len(words) >= 2:
+        return f"{words[0][:3]}{words[1][:3]}"
+    else:
+        return words[0][:6]
+```
+
+### Entidades Predefinidas
+
+El script incluye una lista de entidades de salud:
+
+```python
+entities_data = [
+    {
+        "name": "Hospital Universitario San Ignacio",
+        "code": "HUSI",
+        "type": "hospital",
+        "address": "Carrera 7 No. 40-62, Bogotá",
+        "phone": "+57 1 594 6161",
+        "email": "info@husi.org.co"
+    },
+    {
+        "name": "Clínica Fundación Santa Fe de Bogotá",
+        "code": "FSFB", 
+        "type": "clinica",
+        "address": "Calle 119 No. 7-75, Bogotá",
+        "phone": "+57 1 603 0303",
+        "email": "info@fsfb.org.co"
+    },
+    {
+        "name": "Hospital Pablo Tobón Uribe",
+        "code": "HPTU",
+        "type": "hospital",
+        "address": "Calle 78B No. 69-240, Medellín",
+        "phone": "+57 4 445 9000",
+        "email": "info@hptu.org.co"
+    }
+    # ... más entidades
+]
+```
+
+## Dependencias y Servicios
+
+### Servicios Utilizados
+- **`EntityService`**: Servicio principal para gestión de entidades
+- **`get_entity_service()`**: Factory para obtener instancia del servicio
+
+### Esquemas de Datos
+- **`EntityCreate`**: Schema Pydantic para validación de datos de entidades
+
+### Importaciones Principales
+```python
+from app.modules.entities.services.entity_service import get_entity_service
+from app.modules.entities.schemas.entity import EntityCreate
+```
+
+## Estructura del Script
+
+### 1. Configuración Inicial
+```python
+import asyncio
+from typing import List, Dict
+import logging
+import re
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+```
+
+### 2. Funciones de Normalización
+```python
+def normalize_text(text: str) -> str:
+    """Normalize text for consistent formatting"""
+    text = re.sub(r'\s+', ' ', text.strip())
+    text = text.title()
+    # Handle Spanish articles
+    text = text.replace(' De ', ' de ')
+    text = text.replace(' Del ', ' del ')
+    text = text.replace(' La ', ' la ')
+    text = text.replace(' Las ', ' las ')
+    text = text.replace(' Los ', ' los ')
+    return text
+
+def normalize_code(code: str) -> str:
+    """Normalize entity code"""
+    return code.upper().strip()
+
+def generate_code_from_name(name: str) -> str:
+    """Generate code from entity name if not provided"""
+    words = name.upper().split()
+    if len(words) >= 2:
+        return f"{words[0][:3]}{words[1][:3]}"
+    else:
+        return words[0][:6]
+```
+
+### 3. Función Principal
+```python
+async def import_entities():
+    """Import predefined entities into the system"""
+    service = get_entity_service()
+    
+    for entity_data in ENTITIES_DATA:
+        try:
+            # Normalize data
+            normalized_name = normalize_text(entity_data["name"])
+            normalized_code = normalize_code(entity_data.get("code", ""))
+            
+            # Generate code if not provided
+            if not normalized_code:
+                normalized_code = generate_code_from_name(normalized_name)
+            
+            # Create entity schema
+            entity_create = EntityCreate(
+                name=normalized_name,
+                code=normalized_code,
+                type=entity_data["type"],
+                address=entity_data.get("address", ""),
+                phone=entity_data.get("phone", ""),
+                email=entity_data.get("email", ""),
+                is_active=True
+            )
+            
+            # Check if entity already exists
+            existing = await service.get_entity_by_code(normalized_code)
+            if existing:
+                logger.info(f"Entity {normalized_code} already exists")
+                continue
+            
+            # Create new entity
+            result = await service.create_entity(entity_create)
+            logger.info(f"Created entity: {result.code} - {result.name}")
+            
+        except Exception as e:
+            logger.error(f"Error creating entity {entity_data.get('code', 'UNKNOWN')}: {e}")
+```
+
+## Características Técnicas
+
+### Normalización de Datos
+- **Texto consistente**: Capitalización y formato uniforme
+- **Códigos únicos**: Generación automática si no se proporciona
+- **Limpieza de espacios**: Eliminación de espacios extra
+- **Artículos en español**: Manejo correcto de artículos
+
+### Validaciones
+- **Código único**: Verificación de códigos no duplicados
+- **Nombre único**: Control de nombres no duplicados
+- **Formato de datos**: Validación mediante schemas Pydantic
+- **Existencia previa**: Verificación antes de crear
+
+### Seguridad
+- **Validación de entrada**: Sanitización de datos de entrada
+- **Manejo de errores**: Control robusto de excepciones
+- **Logging detallado**: Registro completo de operaciones
+- **Transacciones atómicas**: Consistencia de datos
+
+### Rendimiento
+- **Operaciones asíncronas**: Procesamiento no bloqueante
+- **Verificación previa**: Evita duplicados innecesarios
+- **Procesamiento en lote**: Importación eficiente de múltiples entidades
+- **Indexación optimizada**: Búsquedas rápidas por código
+
+## Uso del Script
+
+### Ejecución Básica
+```bash
+# Desde el directorio raíz del proyecto
+python3 Scripts/import_entities.py
+```
+
+### Ejecución con Modo Dry-Run
+```bash
+# Previsualización sin cambios reales
+python3 Scripts/import_entities.py --dry-run
+```
+
+### Verificación de Resultados
+```bash
+# Verificar entidades creadas
+python3 -c "
+from app.modules.entities.services.entity_service import get_entity_service
+import asyncio
+
+async def check_entities():
+    service = get_entity_service()
+    entities = await service.list_entities()
+    print(f'Total entities: {len(entities)}')
+    for entity in entities:
+        print(f'- {entity.code}: {entity.name} ({entity.type})')
+
+asyncio.run(check_entities())
+"
+```
+
+## Casos de Uso
+
+### 1. Inicialización del Sistema
+```python
+# Cargar entidades iniciales
+await import_entities()
+print("Entidades de salud importadas exitosamente")
+```
+
+### 2. Adición de Nuevas Entidades
+```python
+# Agregar nueva entidad a la lista
+new_entity = {
+    "name": "Centro Médico Los Andes",
+    "code": "CMLA",
+    "type": "centro_medico",
+    "address": "Avenida 19 No. 120-30, Bogotá",
+    "phone": "+57 1 555 0000",
+    "email": "info@cmlosandes.com"
+}
+ENTITIES_DATA.append(new_entity)
+```
+
+### 3. Importación por Tipo
+```python
+# Filtrar por tipo de entidad
+hospitals = [
+    e for e in ENTITIES_DATA 
+    if e["type"] == "hospital"
+]
+```
+
+## Tipos de Entidades
+
+### Hospitales
+- **Código**: HOSP, HUSI, HPTU, etc.
+- **Tipo**: "hospital"
+- **Características**: Instituciones de alta complejidad
+- **Servicios**: Atención especializada, urgencias, cirugías
+
+### Clínicas
+- **Código**: CLIN, FSFB, etc.
+- **Tipo**: "clinica"
+- **Características**: Instituciones privadas especializadas
+- **Servicios**: Consulta externa, procedimientos ambulatorios
+
+### Centros de Salud
+- **Código**: CESA, CESAN, etc.
+- **Tipo**: "centro_salud"
+- **Características**: Atención primaria
+- **Servicios**: Consulta general, prevención
+
+### Laboratorios
+- **Código**: LABO, LABCLIN, etc.
+- **Tipo**: "laboratorio"
+- **Características**: Servicios diagnósticos
+- **Servicios**: Análisis clínicos, patología
+
+## Consideraciones Importantes
+
+### Configuración Recomendada
+- **Variables de entorno**: Usar para configuración de contacto
+- **Archivo de configuración**: Externalizar datos de entidades
+- **Integración RIPS**: Conectar con códigos RIPS oficiales
+- **Validación geográfica**: Verificar direcciones y ubicaciones
+
+### Requisitos Previos
+- Base de datos MongoDB configurada y accesible
+- Servicios de entidades inicializados
+- Dependencias de Python instaladas
+- Variables de entorno configuradas
+
+### Limitaciones
+- Datos hardcodeados (considerar externalizar)
+- Sin validación de códigos RIPS oficiales
+- Sin integración con sistemas externos de entidades
+- Sin validación geográfica de direcciones
+
+## Integración con Otros Módulos
+
+### Módulo de Pacientes
+- Los pacientes se asocian a entidades de salud
+- Determina el origen de los casos
+- Facilita reportes por institución
+
+### Módulo de Casos
+- Los casos se originan en entidades específicas
+- Permite trazabilidad institucional
+- Facilita estadísticas por entidad
+
+### Módulo de Reportes
+- Genera reportes por entidad de salud
+- Estadísticas de casos por institución
+- Análisis de distribución geográfica
+
+### Módulo de Facturación
+- Asocia servicios a entidades
+- Facilita facturación por institución
+- Controla tarifas por tipo de entidad
+
+Este script es fundamental para establecer la red de instituciones de salud que utilizarán PathSys para gestionar sus casos patológicos y servicios diagnósticos.

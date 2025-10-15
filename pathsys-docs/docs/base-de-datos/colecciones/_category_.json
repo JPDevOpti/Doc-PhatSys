@@ -1,0 +1,8 @@
+{
+  "label": "Colecciones",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "Documentación detallada de todas las colecciones de MongoDB utilizadas en PathSys."
+  }
+}

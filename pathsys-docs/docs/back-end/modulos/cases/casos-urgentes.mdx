@@ -1,0 +1,461 @@
+# Casos Urgentes
+
+El submódulo de casos urgentes proporciona funcionalidad especializada para identificar, monitorear y gestionar casos que requieren atención prioritaria basándose en criterios de tiempo y prioridad.
+
+## Objetivo
+
+Facilitar la gestión eficiente de casos urgentes mediante:
+- Identificación automática de casos con retrasos
+- Monitoreo por patólogo asignado
+- Alertas y notificaciones de casos críticos
+- Reportes de rendimiento y cumplimiento
+- Priorización inteligente de trabajo
+
+## Estructura de Archivos
+
+```
+cases/
+├── routes/urgent_routes.py       # Endpoints para casos urgentes
+├── services/urgent_service.py    # Lógica de negocio
+└── repositories/urgent_repository.py  # Acceso a datos
+```
+
+## Endpoints Disponibles
+
+### Listar Casos Urgentes Generales
+
+**GET** `/api/v1/cases/urgent`
+
+Obtiene una lista de casos urgentes del sistema basándose en criterios de tiempo y prioridad.
+
+#### Parámetros de Query
+- **limit** (opcional): Número máximo de casos a retornar (default: 50)
+- **min_days** (opcional): Días mínimos de retraso para considerar urgente (default: 3)
+
+#### Response
+```json
+{
+  "cases": [
+    {
+      "case_code": "2025-00001",
+      "patient_name": "Juan Pérez",
+      "entity": "EPS Salud",
+      "assigned_pathologist": "Dr. María García",
+      "created_at": "2025-01-15T10:30:00Z",
+      "days_pending": 5,
+      "priority": "Alta",
+      "state": "En proceso",
+      "sample_type": "Biopsia",
+      "urgency_score": 85
+    }
+  ],
+  "total_count": 12,
+  "criteria": {
+    "min_days": 3,
+    "limit": 50
+  }
+}
+```
+
+#### Códigos de Estado
+- **200**: Lista obtenida exitosamente
+- **400**: Parámetros inválidos
+- **500**: Error interno del servidor
+
+### Listar Casos Urgentes por Patólogo
+
+**GET** `/api/v1/cases/urgent/pathologist/{pathologist_id}`
+
+Obtiene casos urgentes asignados a un patólogo específico.
+
+#### Parámetros
+- **pathologist_id** (path): ID del patólogo
+- **limit** (query, opcional): Número máximo de casos (default: 50)
+- **min_days** (query, opcional): Días mínimos de retraso (default: 3)
+
+#### Response
+```json
+{
+  "pathologist": {
+    "id": "path_001",
+    "name": "Dr. María García",
+    "specialty": "Anatomía Patológica"
+  },
+  "urgent_cases": [
+    {
+      "case_code": "2025-00001",
+      "patient_name": "Juan Pérez",
+      "entity": "EPS Salud",
+      "created_at": "2025-01-15T10:30:00Z",
+      "days_pending": 5,
+      "priority": "Alta",
+      "state": "En proceso",
+      "sample_type": "Biopsia",
+      "urgency_score": 85,
+      "estimated_completion": "2025-01-22T17:00:00Z"
+    }
+  ],
+  "summary": {
+    "total_urgent": 8,
+    "high_priority": 3,
+    "medium_priority": 4,
+    "low_priority": 1,
+    "average_days_pending": 4.2
+  }
+}
+```
+
+## Lógica de Negocio
+
+### UrgentCasesService
+
+#### Criterios de Urgencia
+
+**Factores de Evaluación:**
+1. **Días transcurridos**: Tiempo desde creación del caso
+2. **Prioridad asignada**: Alta, Media, Baja
+3. **Tipo de muestra**: Biopsias tienen mayor urgencia
+4. **Estado del caso**: Casos "En proceso" vs "Por firmar"
+5. **Entidad de salud**: Algunas entidades tienen SLA específicos
+6. **Historial del patólogo**: Rendimiento previo
+
+#### Cálculo de Score de Urgencia
+
+```python
+def calculate_urgency_score(case: dict) -> int:
+    """
+    Calculate urgency score (0-100) based on multiple factors
+    """
+    score = 0
+    
+    # Days pending (40% weight)
+    days_pending = case.get('days_pending', 0)
+    if days_pending >= 7:
+        score += 40
+    elif days_pending >= 5:
+        score += 30
+    elif days_pending >= 3:
+        score += 20
+    
+    # Priority (30% weight)
+    priority = case.get('priority', 'Media')
+    if priority == 'Alta':
+        score += 30
+    elif priority == 'Media':
+        score += 20
+    elif priority == 'Baja':
+        score += 10
+    
+    # Sample type (20% weight)
+    sample_type = case.get('sample_type', '')
+    if 'biopsia' in sample_type.lower():
+        score += 20
+    elif 'citologia' in sample_type.lower():
+        score += 15
+    else:
+        score += 10
+    
+    # State (10% weight)
+    state = case.get('state', '')
+    if state == 'Por firmar':
+        score += 10
+    elif state == 'En proceso':
+        score += 5
+    
+    return min(score, 100)
+```
+
+### Métodos Principales
+
+**`list_urgent_cases(limit: int, min_days: int) -> dict`**
+- Consulta casos con retraso mayor a `min_days`
+- Calcula score de urgencia para cada caso
+- Ordena por urgencia descendente
+- Aplica límite de resultados
+
+**`list_urgent_cases_by_pathologist(pathologist_id: str, limit: int, min_days: int) -> dict`**
+- Filtra casos por patólogo asignado
+- Incluye estadísticas del patólogo
+- Calcula métricas de rendimiento
+- Estima tiempos de finalización
+
+**`get_urgency_summary() -> dict`**
+- Genera resumen general de urgencias
+- Calcula métricas por entidad
+- Identifica patrones de retraso
+- Proporciona insights para gestión
+
+**`notify_urgent_cases() -> None`**
+- Envía notificaciones automáticas
+- Alerta a supervisores y patólogos
+- Integra con sistema de notificaciones
+- Registra eventos de notificación
+
+## Consultas de Base de Datos
+
+### Query Principal de Casos Urgentes
+
+```python
+async def find_urgent_cases(min_days: int, limit: int) -> List[dict]:
+    """
+    Find cases that are considered urgent based on time criteria
+    """
+    current_date = datetime.utcnow()
+    cutoff_date = current_date - timedelta(days=min_days)
+    
+    pipeline = [
+        {
+            "$match": {
+                "created_at": {"$lte": cutoff_date},
+                "state": {"$in": ["En proceso", "Por firmar"]},
+                "deleted_at": None
+            }
+        },
+        {
+            "$addFields": {
+                "days_pending": {
+                    "$divide": [
+                        {"$subtract": [current_date, "$created_at"]},
+                        86400000  # milliseconds in a day
+                    ]
+                }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "pathologists",
+                "localField": "assigned_pathologist.id",
+                "foreignField": "_id",
+                "as": "pathologist_info"
+            }
+        },
+        {
+            "$sort": {"days_pending": -1, "priority": 1}
+        },
+        {
+            "$limit": limit
+        }
+    ]
+    
+    return await cases_collection.aggregate(pipeline).to_list(length=None)
+```
+
+### Query por Patólogo
+
+```python
+async def find_urgent_cases_by_pathologist(
+    pathologist_id: str, 
+    min_days: int, 
+    limit: int
+) -> List[dict]:
+    """
+    Find urgent cases assigned to specific pathologist
+    """
+    current_date = datetime.utcnow()
+    cutoff_date = current_date - timedelta(days=min_days)
+    
+    pipeline = [
+        {
+            "$match": {
+                "assigned_pathologist.id": pathologist_id,
+                "created_at": {"$lte": cutoff_date},
+                "state": {"$in": ["En proceso", "Por firmar"]},
+                "deleted_at": None
+            }
+        },
+        {
+            "$addFields": {
+                "days_pending": {
+                    "$divide": [
+                        {"$subtract": [current_date, "$created_at"]},
+                        86400000
+                    ]
+                }
+            }
+        },
+        {
+            "$sort": {"days_pending": -1, "priority": 1}
+        },
+        {
+            "$limit": limit
+        }
+    ]
+    
+    return await cases_collection.aggregate(pipeline).to_list(length=None)
+```
+
+## Métricas y Análisis
+
+### Métricas de Rendimiento
+
+**Por Sistema:**
+- Total de casos urgentes
+- Promedio de días de retraso
+- Distribución por prioridad
+- Tendencias temporales
+
+**Por Patólogo:**
+- Casos urgentes asignados
+- Tiempo promedio de resolución
+- Tasa de cumplimiento de SLA
+- Comparación con pares
+
+**Por Entidad:**
+- Casos urgentes por EPS
+- SLA específicos por entidad
+- Cumplimiento de acuerdos
+- Alertas de incumplimiento
+
+### Reportes Automáticos
+
+**Reporte Diario:**
+```json
+{
+  "date": "2025-01-20",
+  "urgent_cases_count": 15,
+  "new_urgent_today": 3,
+  "resolved_urgent_today": 7,
+  "critical_cases": [
+    {
+      "case_code": "2025-00001",
+      "days_pending": 8,
+      "priority": "Alta"
+    }
+  ],
+  "pathologist_performance": [
+    {
+      "pathologist": "Dr. María García",
+      "urgent_assigned": 5,
+      "avg_resolution_time": 3.2
+    }
+  ]
+}
+```
+
+## Notificaciones y Alertas
+
+### Tipos de Notificaciones
+
+**Alertas Inmediatas:**
+- Casos con más de 7 días de retraso
+- Casos de alta prioridad sin asignar
+- Incumplimiento de SLA críticos
+
+**Reportes Programados:**
+- Resumen diario de casos urgentes
+- Reporte semanal de rendimiento
+- Análisis mensual de tendencias
+
+**Escalamiento:**
+- Notificación a supervisores
+- Alertas a coordinadores
+- Comunicación a entidades
+
+### Configuración de Alertas
+
+```python
+URGENT_CASES_CONFIG = {
+    "thresholds": {
+        "critical_days": 7,
+        "warning_days": 5,
+        "normal_days": 3
+    },
+    "notifications": {
+        "immediate_alert": True,
+        "daily_summary": True,
+        "weekly_report": True
+    },
+    "escalation": {
+        "supervisor_alert_days": 10,
+        "coordinator_alert_days": 14,
+        "entity_notification_days": 21
+    }
+}
+```
+
+## Integración con Otros Módulos
+
+### Casos
+- Accede a información completa de casos
+- Utiliza estados y prioridades
+- Consulta historial de cambios
+
+### Patólogos
+- Obtiene información de asignaciones
+- Calcula métricas de rendimiento
+- Valida disponibilidad y carga
+
+### Notificaciones
+- Envía alertas automáticas
+- Programa reportes periódicos
+- Gestiona escalamientos
+
+### Entidades
+- Consulta SLA específicos
+- Valida acuerdos de servicio
+- Genera reportes por EPS
+
+## Optimizaciones
+
+### Índices de Base de Datos
+```javascript
+// Índice compuesto para consultas urgentes
+db.cases.createIndex({
+  "created_at": 1,
+  "state": 1,
+  "assigned_pathologist.id": 1
+})
+
+// Índice para ordenamiento por prioridad
+db.cases.createIndex({
+  "priority": 1,
+  "created_at": 1
+})
+```
+
+### Cache de Resultados
+- Cache de casos urgentes por 15 minutos
+- Invalidación automática en cambios
+- Cache específico por patólogo
+
+### Consultas Optimizadas
+- Agregaciones eficientes
+- Límites apropiados en resultados
+- Proyección de campos necesarios
+
+## Configuración
+
+### Variables de Entorno
+```bash
+# Configuración de casos urgentes
+URGENT_CASES_MIN_DAYS=3
+URGENT_CASES_DEFAULT_LIMIT=50
+URGENT_CASES_CACHE_TTL=900  # 15 minutos
+
+# Configuración de notificaciones
+URGENT_NOTIFICATIONS_ENABLED=true
+URGENT_DAILY_REPORT_TIME=08:00
+URGENT_ESCALATION_ENABLED=true
+
+# Configuración de SLA
+SLA_HIGH_PRIORITY_DAYS=3
+SLA_MEDIUM_PRIORITY_DAYS=5
+SLA_LOW_PRIORITY_DAYS=7
+```
+
+## Consideraciones de Seguridad
+
+### Control de Acceso
+- Validación de permisos para consultar urgentes
+- Restricción por rol y especialidad
+- Auditoría de accesos a información sensible
+
+### Protección de Datos
+- Anonimización en reportes externos
+- Control de información de pacientes
+- Cumplimiento de normativas de privacidad
+
+### Monitoreo
+- Logging de consultas urgentes
+- Tracking de notificaciones enviadas
+- Auditoría de cambios en configuración

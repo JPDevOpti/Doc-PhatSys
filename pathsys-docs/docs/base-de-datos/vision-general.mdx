@@ -1,0 +1,216 @@
+---
+id: vision-general-bd
+title: Visión General de la Base de Datos
+sidebar_position: 1
+---
+
+# Visión General de la Base de Datos
+
+PathSys utiliza **MongoDB** como sistema de gestión de base de datos NoSQL, proporcionando flexibilidad y escalabilidad para el manejo de datos médicos complejos. El sistema está diseñado para funcionar tanto en entornos de desarrollo local con Docker como en producción con MongoDB Atlas.
+
+## Stack Tecnológico
+
+<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Base de Datos</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>MongoDB 7.0 - Base de datos NoSQL orientada a documentos con soporte para consultas complejas y agregaciones.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Driver Asíncrono</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Motor - Driver asíncrono oficial de MongoDB para Python, optimizado para FastAPI.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Validación</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Pydantic - Validación de datos y serialización automática con tipos Python.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Administración</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Mongo Express - Interfaz web para administración y visualización de datos.</div>
+  </div>
+</div>
+
+## Configuración de Conexión
+
+### Variables de Entorno
+
+El sistema utiliza las siguientes variables de entorno para la configuración de la base de datos:
+
+```bash
+# Configuración básica
+MONGODB_URL=mongodb://localhost:27017
+DATABASE_NAME=lime_pathsys
+ENVIRONMENT=development
+DEBUG=True
+
+# Configuración de Atlas (Producción)
+MONGODB_URL=mongodb+srv://user:password@cluster.mongodb.net/
+DATABASE_NAME=lime_pathsys
+ENVIRONMENT=production
+DEBUG=False
+```
+
+### Parámetros de Conexión
+
+```python
+connection_options = {
+    "serverSelectionTimeoutMS": 5000,    # Timeout para selección de servidor
+    "connectTimeoutMS": 10000,           # Timeout de conexión inicial
+    "socketTimeoutMS": 20000,            # Timeout de socket
+    "maxPoolSize": 10,                   # Máximo de conexiones en pool
+    "minPoolSize": 1,                    # Mínimo de conexiones en pool
+    "maxIdleTimeMS": 30000,              # Tiempo máximo de inactividad
+    "retryWrites": True,                 # Reintentar escrituras
+    "retryReads": True                   # Reintentar lecturas
+}
+```
+
+## Entornos de Despliegue
+
+### 🐳 Desarrollo Local con Docker
+
+Para desarrollo local, PathSys utiliza Docker Compose con los siguientes servicios:
+
+```yaml
+services:
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_dev_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=pathsys_dev
+
+  mongo-express:
+    image: mongo-express:1.0.0
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin123
+```
+
+**Acceso:**
+- **MongoDB**: `localhost:27017`
+- **Mongo Express**: `http://localhost:8081`
+
+### ☁️ Producción con MongoDB Atlas
+
+Para producción, el sistema se conecta a MongoDB Atlas:
+
+```bash
+MONGODB_URL=mongodb+srv://cluster0.dujsqez.mongodb.net/
+DATABASE_NAME=lime_pathsys
+```
+
+**Características de Atlas:**
+- Cluster distribuido y replicado
+- Backups automáticos
+- Monitoreo y alertas
+- Escalabilidad automática
+- Seguridad avanzada
+
+## Arquitectura de Datos
+
+### Patrón de Diseño
+
+PathSys implementa un patrón de **Repository + Service** para el acceso a datos:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Controllers   │───▶│    Services     │───▶│  Repositories   │
+│   (FastAPI)     │    │  (Business      │    │   (MongoDB      │
+│                 │    │   Logic)        │    │    Access)      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                       │
+                                               ┌─────────────────┐
+                                               │    MongoDB      │
+                                               │   Collections   │
+                                               └─────────────────┘
+```
+
+### Gestión de Conexiones
+
+```python
+class DatabaseManager:
+    """Gestor centralizado de conexiones a MongoDB"""
+    
+    def __init__(self):
+        self.client: Optional[AsyncIOMotorClient] = None
+        self.database: Optional[AsyncIOMotorDatabase] = None
+    
+    async def connect_to_mongo(self):
+        """Establecer conexión con verificación de salud"""
+        self.client = AsyncIOMotorClient(settings.MONGODB_URL)
+        self.database = self.client[settings.DATABASE_NAME]
+        await self.client.admin.command('ping')  # Health check
+```
+
+## Colecciones Principales
+
+PathSys maneja **15+ colecciones** organizadas por dominio funcional:
+
+### 🏥 **Gestión Clínica**
+- `patients` - Información de pacientes
+- `cases` - Casos patológicos
+- `entities` - Entidades de salud
+
+### 👨‍⚕️ **Personal Médico**
+- `pathologists` - Médicos patólogos
+- `residents` - Médicos residentes
+- `auxiliaries` - Personal auxiliar
+
+### 🔬 **Catálogos Médicos**
+- `tests` - Catálogo de pruebas
+- `diseases` - Catálogo de enfermedades
+
+### 🔐 **Sistema y Soporte**
+- `users` - Autenticación
+- `tickets` - Soporte técnico
+- `billing` - Facturación
+
+### 📊 **Contadores y Control**
+- `case_counters` - Consecutivos de casos
+- `approval_counters` - Consecutivos de aprobaciones
+- `consecutive_tickets` - Consecutivos de tickets
+
+## Características Técnicas
+
+### Índices y Performance
+- **Índices únicos** en códigos de identificación
+- **Índices compuestos** para consultas complejas
+- **Agregaciones optimizadas** para estadísticas
+- **Proyecciones** para reducir transferencia de datos
+
+### Validación de Datos
+- **Modelos Pydantic** para validación de esquemas
+- **Validadores personalizados** para reglas de negocio
+- **Serialización automática** de tipos Python a BSON
+
+### Seguridad
+- **Conexiones encriptadas** (TLS/SSL)
+- **Autenticación** basada en credenciales
+- **Validación de entrada** en todos los endpoints
+- **Sanitización** de datos de consulta
+
+## Monitoreo y Mantenimiento
+
+### Logging
+```python
+logger = logging.getLogger(__name__)
+logger.info(f"Conectado a MongoDB: {settings.DATABASE_NAME}")
+logger.error(f"Error al conectar con MongoDB: {str(e)}")
+```
+
+### Health Checks
+- Verificación de conexión en startup
+- Ping periódico al servidor
+- Manejo de reconexión automática
+
+### Backup y Recuperación
+- **Desarrollo**: Volúmenes Docker persistentes
+- **Producción**: Backups automáticos de Atlas
+- **Scripts de inicialización** para datos de prueba
+
+Esta arquitectura proporciona una base sólida, escalable y mantenible para el sistema PathSys, adaptándose tanto a entornos de desarrollo como de producción.

@@ -1,5 +1,473 @@
 ---
 id: mod-billing
-title: Billing
-sidebar_position: 6
+title: Facturacion
+sidebar_position: 7
 ---
+
+# Módulo de Facturación
+
+## Objetivo
+
+El módulo de facturación gestiona el registro, administración y control de personal de facturación del laboratorio de patología en PathSys. Permite crear, consultar, actualizar y eliminar usuarios de facturación, así como gestionar sus credenciales de acceso al sistema, facilitando el control de acceso y la trazabilidad de actividades del personal encargado de la facturación médica.
+
+## Estructura de Archivos
+
+```
+app/modules/billing/
+├── __init__.py                     # Comentario del módulo
+├── routes/
+│   └── billing_routes.py          # Endpoints REST API
+├── services/
+│   ├── __init__.py               # Comentario de servicios
+│   └── billing_service.py        # Lógica de negocio
+├── repositories/
+│   └── billing_repository.py     # Operaciones de base de datos
+└── schemas/
+    ├── __init__.py               # Exports de esquemas
+    └── billing.py                # Esquemas de validación
+```
+
+## Endpoints API
+
+### Crear Usuario de Facturación
+- **POST** `/billing/`
+- **Descripción**: Crea un nuevo usuario de facturación en el sistema y su cuenta de usuario
+- **Request Body**: `BillingCreate`
+- **Response**: `BillingResponse` (201 Created)
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 409: Código de facturación o email ya existe
+  - 500: Error interno del servidor
+
+**Ejemplo de uso**:
+```json
+{
+    "billing_code": "BILL001",
+    "billing_name": "Ana Martínez",
+    "billing_email": "ana.martinez@pathsys.com",
+    "password": "securePassword123",
+    "is_active": true,
+    "observations": "Especialista en facturación médica y seguros"
+}
+```
+
+### Listar Usuarios de Facturación
+- **GET** `/billing/`
+- **Descripción**: Obtiene lista de usuarios de facturación activos con paginación
+- **Query Parameters**:
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 10, max: 100): Número máximo de registros
+- **Response**: `List[BillingResponse]`
+
+**Ejemplo**: `GET /billing/?skip=0&limit=20`
+
+### Buscar Usuarios de Facturación
+- **GET** `/billing/search`
+- **Descripción**: Busca usuarios de facturación con múltiples criterios de filtrado
+- **Query Parameters**:
+  - `q` (opcional): Término de búsqueda general (nombre, código, email)
+  - `billing_name` (opcional): Filtrar por nombre específico
+  - `billing_code` (opcional): Filtrar por código específico
+  - `billing_email` (opcional): Filtrar por email específico
+  - `is_active` (opcional): Filtrar por estado activo
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 100, max: 1000): Número máximo de registros
+- **Response**: `List[BillingResponse]`
+
+**Ejemplos**:
+- `GET /billing/search?q=ana&skip=0&limit=10`
+- `GET /billing/search?billing_name=Martínez&is_active=true`
+- `GET /billing/search?billing_code=BILL001`
+
+### Obtener Usuario de Facturación por Código
+- **GET** `/billing/{billing_code}`
+- **Descripción**: Obtiene un usuario de facturación específico por su código
+- **Path Parameters**:
+  - `billing_code`: Código único del usuario de facturación
+- **Response**: `BillingResponse`
+- **Errores**:
+  - 404: Usuario de facturación no encontrado
+  - 500: Error interno del servidor
+
+**Ejemplo**: `GET /billing/BILL001`
+
+### Actualizar Usuario de Facturación
+- **PUT** `/billing/{billing_code}`
+- **Descripción**: Actualiza los datos de un usuario de facturación existente
+- **Path Parameters**:
+  - `billing_code`: Código único del usuario de facturación
+- **Request Body**: `BillingUpdate`
+- **Response**: `BillingResponse`
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 404: Usuario de facturación no encontrado
+  - 409: Email ya existe
+  - 500: Error interno del servidor
+
+**Ejemplo de uso**:
+```json
+{
+    "billing_name": "Ana Martínez López",
+    "billing_email": "ana.martinez.lopez@pathsys.com",
+    "is_active": true,
+    "observations": "Especialista senior en facturación médica y gestión de seguros",
+    "password": "newSecurePassword456"
+}
+```
+
+### Eliminar Usuario de Facturación
+- **DELETE** `/billing/{billing_code}`
+- **Descripción**: Elimina un usuario de facturación del sistema (eliminación física)
+- **Path Parameters**:
+  - `billing_code`: Código único del usuario de facturación
+- **Response**: `{"deleted": boolean, "billing_code": string}`
+- **Errores**:
+  - 404: Usuario de facturación no encontrado
+  - 500: Error interno del servidor
+
+## Esquemas de Datos
+
+### BillingBase
+Esquema base para usuarios de facturación:
+```python
+{
+    "billing_code": "string",       # Código único del usuario (max 11 chars)
+    "billing_name": "string",       # Nombre completo (max 100 chars)
+    "billing_email": "EmailStr",    # Email único válido
+    "is_active": "boolean",         # Estado activo/inactivo (default: true)
+    "observations": "string"        # Notas adicionales (max 500 chars, opcional)
+}
+```
+
+### BillingCreate
+Esquema para crear usuarios de facturación (hereda de BillingBase):
+```python
+{
+    "billing_code": "string",       # Requerido, único
+    "billing_name": "string",       # Requerido
+    "billing_email": "EmailStr",    # Requerido, único
+    "password": "string",           # Requerido (min 6, max 128 chars)
+    "is_active": "boolean",         # Default: true
+    "observations": "string"        # Opcional
+}
+```
+
+### BillingUpdate
+Esquema para actualizar usuarios de facturación:
+```python
+{
+    "billing_name": "string",       # Opcional
+    "billing_email": "EmailStr",    # Opcional, debe ser único
+    "is_active": "boolean",         # Opcional
+    "observations": "string",       # Opcional
+    "password": "string"            # Opcional (min 6, max 128 chars)
+}
+```
+
+### BillingResponse
+Esquema de respuesta (hereda de BillingBase):
+```python
+{
+    "id": "string",                 # ID único generado
+    "billing_code": "string",
+    "billing_name": "string",
+    "billing_email": "EmailStr",
+    "is_active": "boolean",
+    "observations": "string",
+    "created_at": "datetime",       # Fecha de creación
+    "updated_at": "datetime"        # Fecha de última actualización
+}
+```
+
+### BillingSearch
+Esquema para búsqueda de usuarios de facturación:
+```python
+{
+    "q": "string",                  # Búsqueda general (opcional)
+    "billing_name": "string",       # Filtro por nombre (opcional)
+    "billing_code": "string",       # Filtro por código (opcional)
+    "billing_email": "string",      # Filtro por email (opcional)
+    "is_active": "boolean"          # Filtro por estado (opcional)
+}
+```
+
+## Lógica de Negocio (BillingService)
+
+### Funcionalidades Principales
+
+1. **Creación de Usuarios de Facturación**:
+   - Validación de unicidad del código de facturación
+   - Validación de unicidad del email
+   - Creación automática de cuenta de usuario
+   - Manejo de rollback en caso de error
+   - Asignación automática de timestamps
+
+2. **Consulta por Código**:
+   - Búsqueda exacta por código único
+   - Manejo de casos no encontrados
+
+3. **Listado de Usuarios de Facturación**:
+   - Paginación configurable (hasta 100 registros)
+   - Solo muestra usuarios activos por defecto
+   - Ordenamiento por fecha de creación
+
+4. **Búsqueda Avanzada**:
+   - Búsqueda general con parámetro `q` (nombre, código, email)
+   - Filtros específicos por campo individual
+   - Búsqueda case-insensitive con regex
+   - Paginación en resultados (hasta 1,000 registros)
+
+5. **Actualización de Usuarios de Facturación**:
+   - Validación de existencia del usuario
+   - Validación de unicidad de email en actualizaciones
+   - Sincronización con cuenta de usuario
+   - Actualización parcial de campos
+
+6. **Eliminación de Usuarios de Facturación**:
+   - Verificación de existencia antes de eliminar
+   - Eliminación física del registro
+   - Manejo de dependencias con usuarios
+
+### Integración con UserManagementService
+
+El servicio de facturación se integra con `UserManagementService` para:
+- Crear cuentas de usuario automáticamente con rol "billing"
+- Sincronizar cambios de datos personales
+- Gestionar credenciales de acceso
+- Mantener consistencia entre usuarios de facturación y usuarios del sistema
+
+## Operaciones de Repositorio (BillingRepository)
+
+### Métodos Principales
+
+- `create(billing)`: Inserta nuevo usuario de facturación con timestamps
+- `get_by_billing_code(code)`: Busca usuario por código exacto
+- `get_by_email(email)`: Busca usuario por email exacto
+- `list_active(skip, limit)`: Lista usuarios activos con paginación
+- `search(search_params, skip, limit)`: Búsqueda avanzada con filtros
+- `update_by_billing_code(code, data)`: Actualiza usuario por código
+- `delete_by_billing_code(code)`: Elimina usuario por código
+
+### Características Técnicas
+
+- **Conversión de ObjectId**: Transformación automática de `_id` a `id` string
+- **Búsqueda con Regex**: Búsquedas case-insensitive para nombres y emails
+- **Paginación Eficiente**: Uso de `skip` y `limit` para grandes volúmenes
+- **Timestamps Automáticos**: Fechas de creación y actualización
+- **Manejo de Duplicados**: Control de errores de clave duplicada
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+
+1. **Código de Facturación**:
+   - Campo requerido
+   - Máximo 11 caracteres
+   - Debe ser único en el sistema
+
+2. **Nombre del Usuario de Facturación**:
+   - Campo requerido
+   - Máximo 100 caracteres
+   - Nombre completo del usuario
+
+3. **Email del Usuario de Facturación**:
+   - Campo requerido
+   - Formato de email válido (EmailStr)
+   - Debe ser único en el sistema
+
+4. **Contraseña**:
+   - Requerida solo en creación
+   - Mínimo 6 caracteres, máximo 128
+   - Opcional en actualizaciones
+
+5. **Observaciones**:
+   - Campo opcional
+   - Máximo 500 caracteres
+   - Notas adicionales sobre el usuario
+
+### Manejo de Errores
+
+- **BadRequestError (400)**: Datos de entrada inválidos
+- **ConflictError (409)**: Código de facturación o email duplicado
+- **NotFoundError (404)**: Usuario de facturación no encontrado
+- **Internal Server Error (500)**: Errores no controlados
+- **Validation Error (422)**: Errores de validación de Pydantic
+
+## Búsqueda Avanzada
+
+### Tipos de Búsqueda
+
+1. **Búsqueda General (parámetro `q`)**:
+   - Busca en nombre, código y email simultáneamente
+   - Utiliza operador `$or` de MongoDB
+   - Búsqueda case-insensitive con regex
+
+2. **Búsqueda por Nombre**:
+   - Búsqueda parcial en el campo `billing_name`
+   - Case-insensitive con regex
+   - Útil para encontrar usuarios por apellido
+
+3. **Búsqueda por Código**:
+   - Búsqueda exacta en el campo `billing_code`
+   - Ideal para búsquedas precisas
+
+4. **Búsqueda por Email**:
+   - Búsqueda parcial en el campo `billing_email`
+   - Case-insensitive con regex
+   - Útil para encontrar por dominio
+
+5. **Filtrado por Estado**:
+   - Filtro booleano por `is_active`
+   - Permite mostrar solo usuarios activos o inactivos
+
+### Características de Búsqueda
+
+- **Case-insensitive**: No distingue mayúsculas/minúsculas
+- **Búsqueda parcial**: Encuentra coincidencias parciales
+- **Combinación de filtros**: Múltiples criterios simultáneos
+- **Paginación**: Control de resultados con `skip` y `limit`
+- **Alto rendimiento**: Optimizada para hasta 1,000 resultados
+
+## Integración con Otros Módulos
+
+### Módulos Relacionados
+
+1. **Autenticación**: Gestión de credenciales de acceso
+2. **Casos**: Gestión de facturación de casos médicos
+3. **Pruebas**: Facturación de pruebas de laboratorio
+4. **Pacientes**: Gestión de facturación por paciente
+5. **Reportes**: Estadísticas de facturación y cobranza
+6. **Entidades**: Facturación a entidades aseguradoras
+
+### Consideraciones de Integración
+
+- Los códigos de facturación deben ser estables y únicos
+- La eliminación debe considerar referencias en otros módulos
+- El estado `is_active` afecta el acceso al sistema
+- Sincronización automática con cuentas de usuario
+- Mantenimiento de integridad referencial
+
+## Gestión de Usuarios
+
+### Creación Automática de Usuarios
+
+Cuando se crea un usuario de facturación, automáticamente se:
+1. Crea una cuenta de usuario en la colección `users`
+2. Asigna el rol de "billing"
+3. Configura las credenciales de acceso
+4. Sincroniza el estado activo/inactivo
+
+### Sincronización de Datos
+
+Las actualizaciones de usuarios de facturación se sincronizan con:
+- Nombre del usuario
+- Email del usuario
+- Estado activo/inactivo
+- Contraseña (si se proporciona)
+
+### Rollback en Errores
+
+Si falla la creación del usuario:
+- Se elimina automáticamente el usuario de facturación creado
+- Se mantiene la consistencia de datos
+- Se reporta el error apropiado
+
+## Optimizaciones de Base de Datos
+
+### Índices Recomendados
+
+```javascript
+// MongoDB indexes
+db.billing.createIndex({ "billing_code": 1 }, { unique: true })
+db.billing.createIndex({ "billing_email": 1 }, { unique: true })
+db.billing.createIndex({ "is_active": 1 })
+db.billing.createIndex({ "created_at": -1 })
+db.billing.createIndex({ 
+    "billing_name": "text", 
+    "billing_email": "text" 
+})
+```
+
+### Consideraciones de Rendimiento
+
+- Búsquedas optimizadas con índices de texto completo
+- Paginación eficiente para listados grandes
+- Límites de consulta para prevenir sobrecarga
+- Índices únicos para prevenir duplicados
+
+## Variables de Configuración
+
+El módulo utiliza las siguientes configuraciones del sistema:
+
+- **Database Connection**: Conexión a MongoDB
+- **User Management**: Configuración del servicio de usuarios
+- **Pagination Limits**: Límites máximos de registros
+- **Password Policy**: Políticas de contraseñas
+- **Email Validation**: Configuración de validación de emails
+
+## Casos de Uso Comunes
+
+### 1. Registro de Nuevo Usuario de Facturación
+```python
+# Crear usuario de facturación con cuenta de usuario
+billing_data = {
+    "billing_code": "BILL001",
+    "billing_name": "Ana Martínez",
+    "billing_email": "ana.martinez@pathsys.com",
+    "password": "securePassword123",
+    "is_active": True,
+    "observations": "Especialista en facturación médica"
+}
+```
+
+### 2. Búsqueda de Usuarios por Nombre
+```python
+# Buscar usuarios de facturación por apellido
+search_params = {
+    "billing_name": "Martínez",
+    "is_active": True
+}
+```
+
+### 3. Actualización de Datos de Usuario
+```python
+# Actualizar email y observaciones
+update_data = {
+    "billing_email": "ana.martinez.nuevo@pathsys.com",
+    "observations": "Especialista senior en facturación y seguros médicos"
+}
+```
+
+### 4. Búsqueda General de Usuarios
+```python
+# Búsqueda general por término
+search_params = {
+    "q": "ana",
+    "skip": 0,
+    "limit": 10
+}
+```
+
+### 5. Listado de Usuarios Activos
+```python
+# Obtener usuarios de facturación activos con paginación
+list_params = {
+    "skip": 0,
+    "limit": 20
+}
+```
+
+## Características Técnicas Destacadas
+
+- **Códigos Únicos**: Sistema de códigos únicos por usuario de facturación
+- **Gestión Integrada de Usuarios**: Creación automática de cuentas con rol "billing"
+- **Búsqueda Avanzada**: Múltiples criterios de filtrado
+- **Paginación Eficiente**: Manejo de grandes volúmenes de datos
+- **Validaciones Robustas**: Prevención de duplicados y datos inválidos
+- **Sincronización Automática**: Consistencia entre usuarios de facturación y usuarios del sistema
+- **Rollback Automático**: Manejo de errores con reversión de cambios
+- **Timestamps Automáticos**: Control de fechas de creación y actualización
+- **Búsqueda Case-insensitive**: Búsquedas flexibles y amigables
+- **Eliminación Física**: Eliminación completa de registros cuando es necesario
+
+El módulo de facturación proporciona una gestión completa del personal de facturación en PathSys, con funcionalidades robustas de CRUD, búsqueda avanzada, integración con el sistema de usuarios y manejo eficiente de errores, asegurando la integridad y consistencia de los datos del personal encargado de la facturación médica y gestión de seguros.

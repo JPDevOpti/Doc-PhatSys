@@ -1,0 +1,455 @@
+# Colección: Facturación
+
+## Descripción General
+La colección `billing` gestiona toda la información financiera y de facturación del sistema PathSys, incluyendo tarifas, facturas, pagos, y reportes financieros relacionados con los servicios de patología prestados.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `billing_code` | String | Sí | Código único de facturación |
+| `case_id` | ObjectId | Sí | Referencia al caso asociado |
+| `entity_id` | ObjectId | Sí | Referencia a la entidad facturada |
+| `patient_info` | Object | Sí | Información del paciente |
+| `services` | Array | Sí | Lista de servicios facturados |
+| `subtotal` | Decimal | Sí | Subtotal antes de impuestos |
+| `tax_amount` | Decimal | Sí | Monto de impuestos |
+| `discount_amount` | Decimal | No | Monto de descuento aplicado |
+| `total_amount` | Decimal | Sí | Monto total a pagar |
+| `billing_date` | DateTime | Sí | Fecha de facturación |
+| `due_date` | DateTime | Sí | Fecha de vencimiento |
+| `payment_status` | String | Sí | Estado del pago |
+| `payment_method` | String | No | Método de pago utilizado |
+| `payment_date` | DateTime | No | Fecha de pago |
+| `payment_reference` | String | No | Referencia del pago |
+| `notes` | String | No | Notas adicionales |
+| `created_by` | ObjectId | Sí | Usuario que creó la factura |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+### Subdocumento: PatientInfo
+```javascript
+{
+  patient_id: ObjectId,
+  patient_name: String,
+  identification: String,
+  entity_name: String
+}
+```
+
+### Subdocumento: ServiceItem
+```javascript
+{
+  service_id: ObjectId,
+  service_name: String,
+  service_code: String,
+  quantity: Number,
+  unit_price: Decimal,
+  total_price: Decimal,
+  description: String
+}
+```
+
+## Enumeraciones
+
+### PaymentStatusEnum
+- `pending`: Pendiente de pago
+- `partial`: Pago parcial
+- `paid`: Pagado completamente
+- `overdue`: Vencido
+- `cancelled`: Cancelado
+- `refunded`: Reembolsado
+
+### PaymentMethodEnum
+- `cash`: Efectivo
+- `credit_card`: Tarjeta de crédito
+- `debit_card`: Tarjeta débito
+- `bank_transfer`: Transferencia bancaria
+- `check`: Cheque
+- `electronic_payment`: Pago electrónico
+
+## Validaciones
+
+- **billing_code**: Único en el sistema, formato específico
+- **case_id**: Debe existir en la colección de casos
+- **entity_id**: Debe existir en la colección de entidades
+- **services**: Array no vacío con al menos un servicio
+- **subtotal**: Valor positivo, calculado automáticamente
+- **tax_amount**: Valor no negativo, calculado según configuración
+- **total_amount**: Debe coincidir con subtotal + tax_amount - discount_amount
+- **billing_date**: No puede ser fecha futura
+- **due_date**: Debe ser posterior a billing_date
+- **payment_status**: Valor válido del enum
+- **payment_method**: Requerido si payment_status es 'paid' o 'partial'
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de facturación
+db.billing.createIndex({ "billing_code": 1 }, { unique: true })
+
+// Índice para relación con casos
+db.billing.createIndex({ "case_id": 1 })
+
+// Índice para relación con entidades
+db.billing.createIndex({ "entity_id": 1 })
+
+// Índice para estado de pago
+db.billing.createIndex({ "payment_status": 1 })
+
+// Índice para fechas de facturación
+db.billing.createIndex({ "billing_date": 1 })
+
+// Índice para fechas de vencimiento
+db.billing.createIndex({ "due_date": 1 })
+
+// Índice compuesto para reportes financieros
+db.billing.createIndex({ 
+  "billing_date": 1, 
+  "payment_status": 1,
+  "entity_id": 1 
+})
+
+// Índice para búsqueda por paciente
+db.billing.createIndex({ "patient_info.identification": 1 })
+
+// Índice para montos totales
+db.billing.createIndex({ "total_amount": 1 })
+```
+
+## Esquemas de Operación
+
+### BillingCreate
+```python
+class BillingCreate(BaseModel):
+    case_id: str
+    entity_id: str
+    services: List[ServiceItemCreate]
+    discount_amount: Optional[Decimal] = Decimal('0.00')
+    due_days: int = Field(default=30, ge=1, le=365)
+    notes: Optional[str] = Field(None, max_length=500)
+```
+
+### BillingUpdate
+```python
+class BillingUpdate(BaseModel):
+    services: Optional[List[ServiceItemCreate]] = None
+    discount_amount: Optional[Decimal] = None
+    due_date: Optional[datetime] = None
+    payment_status: Optional[PaymentStatusEnum] = None
+    payment_method: Optional[PaymentMethodEnum] = None
+    payment_date: Optional[datetime] = None
+    payment_reference: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = Field(None, max_length=500)
+```
+
+### BillingResponse
+```python
+class BillingResponse(BaseModel):
+    id: str
+    billing_code: str
+    case_code: str
+    entity_name: str
+    patient_info: PatientInfoResponse
+    services: List[ServiceItemResponse]
+    subtotal: Decimal
+    tax_amount: Decimal
+    discount_amount: Decimal
+    total_amount: Decimal
+    billing_date: datetime
+    due_date: datetime
+    payment_status: PaymentStatusEnum
+    payment_method: Optional[PaymentMethodEnum]
+    payment_date: Optional[datetime]
+    payment_reference: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+```
+
+### BillingSearch
+```python
+class BillingSearch(BaseModel):
+    q: Optional[str] = Field(None, description="Término de búsqueda general")
+    billing_code: Optional[str] = Field(None, description="Código de facturación")
+    case_id: Optional[str] = Field(None, description="ID del caso")
+    entity_id: Optional[str] = Field(None, description="ID de la entidad")
+    patient_identification: Optional[str] = Field(None, description="Identificación del paciente")
+    payment_status: Optional[PaymentStatusEnum] = Field(None, description="Estado del pago")
+    billing_date_from: Optional[datetime] = Field(None, description="Fecha de facturación desde")
+    billing_date_to: Optional[datetime] = Field(None, description="Fecha de facturación hasta")
+    due_date_from: Optional[datetime] = Field(None, description="Fecha de vencimiento desde")
+    due_date_to: Optional[datetime] = Field(None, description="Fecha de vencimiento hasta")
+    amount_from: Optional[Decimal] = Field(None, description="Monto desde")
+    amount_to: Optional[Decimal] = Field(None, description="Monto hasta")
+```
+
+## Generación de Código de Facturación
+
+### Formato del Código
+```
+FAC-YYYY-NNNNNN
+```
+- **FAC**: Prefijo fijo para facturas
+- **YYYY**: Año de facturación
+- **NNNNNN**: Número secuencial de 6 dígitos
+
+### Implementación
+```python
+def generate_billing_code(year: int = None) -> str:
+    if year is None:
+        year = datetime.now().year
+    
+    # Get next sequential number for the year
+    counter = get_or_create_billing_counter(year)
+    next_number = increment_billing_counter(counter.id)
+    
+    return f"FAC-{year}-{next_number:06d}"
+```
+
+## Cálculos Financieros
+
+### Cálculo de Subtotal
+```python
+def calculate_subtotal(services: List[ServiceItem]) -> Decimal:
+    return sum(service.quantity * service.unit_price for service in services)
+```
+
+### Cálculo de Impuestos
+```python
+def calculate_tax_amount(subtotal: Decimal, tax_rate: Decimal = Decimal('0.19')) -> Decimal:
+    return subtotal * tax_rate
+```
+
+### Cálculo de Total
+```python
+def calculate_total_amount(subtotal: Decimal, tax_amount: Decimal, 
+                          discount_amount: Decimal = Decimal('0.00')) -> Decimal:
+    return subtotal + tax_amount - discount_amount
+```
+
+## Estados de Pago y Flujo
+
+### Flujo de Estados
+```
+pending → partial → paid
+pending → paid
+pending → overdue → paid
+pending → cancelled
+paid → refunded
+```
+
+### Transiciones Válidas
+```python
+VALID_TRANSITIONS = {
+    'pending': ['partial', 'paid', 'overdue', 'cancelled'],
+    'partial': ['paid', 'overdue', 'cancelled'],
+    'paid': ['refunded'],
+    'overdue': ['partial', 'paid', 'cancelled'],
+    'cancelled': [],
+    'refunded': []
+}
+```
+
+## Relaciones
+
+### Con Casos
+- **Facturación por Caso**: Cada caso puede tener una o más facturas
+- **Servicios Asociados**: Los servicios facturados corresponden a pruebas realizadas
+- **Información del Paciente**: Datos del paciente extraídos del caso
+
+### Con Entidades
+- **Entidad Facturada**: La entidad responsable del pago
+- **Tarifas Específicas**: Precios pueden variar por entidad
+- **Términos de Pago**: Condiciones específicas por entidad
+
+### Con Usuarios
+- **Creador de Factura**: Usuario responsable de la facturación
+- **Historial de Modificaciones**: Auditoría de cambios realizados
+
+## Casos de Uso Principales
+
+1. **Generación de Facturas**: Creación automática o manual de facturas
+2. **Gestión de Pagos**: Registro y seguimiento de pagos recibidos
+3. **Reportes Financieros**: Análisis de ingresos y cuentas por cobrar
+4. **Seguimiento de Vencimientos**: Identificación de facturas vencidas
+5. **Conciliación Bancaria**: Reconciliación de pagos con extractos bancarios
+6. **Análisis de Rentabilidad**: Evaluación de rentabilidad por entidad/servicio
+
+## Reportes Financieros
+
+### Reporte de Ingresos
+```python
+class IncomeReport(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    total_billed: Decimal
+    total_collected: Decimal
+    pending_amount: Decimal
+    overdue_amount: Decimal
+    collection_rate: float
+```
+
+### Reporte por Entidad
+```python
+class EntityBillingReport(BaseModel):
+    entity_id: str
+    entity_name: str
+    total_cases: int
+    total_billed: Decimal
+    total_paid: Decimal
+    pending_amount: Decimal
+    average_payment_days: float
+```
+
+### Reporte de Servicios
+```python
+class ServiceReport(BaseModel):
+    service_id: str
+    service_name: str
+    quantity_billed: int
+    total_revenue: Decimal
+    average_price: Decimal
+    profit_margin: float
+```
+
+## Configuración de Tarifas
+
+### Tarifas por Entidad
+```python
+class EntityTariff(BaseModel):
+    entity_id: str
+    service_id: str
+    unit_price: Decimal
+    effective_date: datetime
+    expiration_date: Optional[datetime]
+    is_active: bool
+```
+
+### Tarifas por Volumen
+```python
+class VolumeTariff(BaseModel):
+    entity_id: str
+    service_id: str
+    min_quantity: int
+    max_quantity: Optional[int]
+    discount_percentage: Decimal
+    effective_date: datetime
+```
+
+## Integración con Sistemas Externos
+
+### Sistema Contable
+```python
+def sync_with_accounting_system(billing_id: str):
+    billing = get_billing_by_id(billing_id)
+    accounting_entry = create_accounting_entry(billing)
+    return accounting_system.post_entry(accounting_entry)
+```
+
+### Sistema de Pagos
+```python
+def process_electronic_payment(billing_id: str, payment_data: dict):
+    billing = get_billing_by_id(billing_id)
+    payment_result = payment_gateway.process_payment(
+        amount=billing.total_amount,
+        payment_data=payment_data
+    )
+    if payment_result.success:
+        update_payment_status(billing_id, 'paid', payment_result.reference)
+    return payment_result
+```
+
+### Sistema Bancario
+```python
+def reconcile_bank_payments(bank_file: str):
+    bank_transactions = parse_bank_file(bank_file)
+    for transaction in bank_transactions:
+        matching_billing = find_billing_by_reference(transaction.reference)
+        if matching_billing:
+            update_payment_status(matching_billing.id, 'paid', transaction.reference)
+```
+
+## Métricas y KPIs
+
+### Métricas de Cobranza
+- Tiempo promedio de cobro
+- Tasa de cobranza por período
+- Porcentaje de facturas vencidas
+- Monto promedio por factura
+
+### Métricas de Rentabilidad
+- Ingresos por entidad
+- Rentabilidad por tipo de servicio
+- Crecimiento de ingresos mensual
+- Análisis de márgenes
+
+### Métricas Operativas
+- Tiempo promedio de facturación
+- Número de facturas por día
+- Errores en facturación
+- Tiempo de resolución de disputas
+
+## Consideraciones de Seguridad
+
+### Acceso a Información Financiera
+- Permisos específicos para módulo de facturación
+- Auditoría de accesos a información financiera
+- Separación de funciones (creación vs. aprobación)
+
+### Integridad de Datos
+- Validación de cálculos automáticos
+- Prevención de modificaciones no autorizadas
+- Backup frecuente de datos financieros
+
+### Cumplimiento Normativo
+- Cumplimiento de normativas fiscales
+- Retención de documentos según ley
+- Reportes para autoridades fiscales
+
+## Consideraciones de Rendimiento
+
+### Optimizaciones
+- Índices para consultas frecuentes de reportes
+- Cache para tarifas activas
+- Agregaciones pre-calculadas para dashboards
+- Particionamiento por año para datos históricos
+
+### Monitoreo
+- Tiempo de respuesta de consultas financieras
+- Volumen de transacciones por día
+- Uso de memoria en cálculos complejos
+- Rendimiento de reportes pesados
+
+## Backup y Recuperación
+
+### Datos Críticos
+- Información de facturación
+- Registros de pagos
+- Configuración de tarifas
+- Reportes financieros
+
+### Estrategia de Backup
+```python
+def backup_financial_data():
+    # Backup diario de datos financieros críticos
+    financial_data = {
+        'billing': db.billing.find({}),
+        'tariffs': db.entity_tariffs.find({}),
+        'payments': db.payments.find({})
+    }
+    backup_system.store(financial_data, "financial_backup")
+```
+
+### Plan de Recuperación
+```python
+def restore_financial_data(backup_date: datetime):
+    # Procedimiento de recuperación de datos financieros
+    backup_data = backup_system.retrieve("financial_backup", backup_date)
+    validate_financial_integrity(backup_data)
+    restore_collections(backup_data)
+    verify_calculations()
+```

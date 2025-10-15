@@ -1,0 +1,114 @@
+---
+id: scripts
+title: Scripts de Inicialización y Análisis
+sidebar_position: 4
+---
+
+# Scripts de Inicialización y Análisis
+
+Los scripts de PathSys son herramientas esenciales para la inicialización, migración de datos y análisis del sistema. Estos scripts permiten poblar la base de datos con información inicial, importar datos desde fuentes externas y realizar análisis estadísticos del sistema.
+
+## Categorías de Scripts
+
+### Scripts de Importación de Datos Maestros
+Scripts para poblar el sistema con datos fundamentales:
+
+- **[Administradores](./import-administrators)**: Creación de usuarios administradores del sistema
+- **[Patólogos](./import-pathologists)**: Importación de médicos patólogos y residentes
+- **[Entidades](./import-entities)**: Carga de hospitales, clínicas y centros de salud
+- **[Enfermedades](./import-diseases)**: Importación de catálogos CIE-10 y CIE-O
+- **[Pruebas](./import-tests)**: Carga de tipos de pruebas y exámenes
+
+### Scripts de Generación de Datos de Prueba
+Scripts para crear datos de prueba realistas:
+
+- **[Pacientes](./import-patients)**: Generación de pacientes con datos aleatorios
+- **[Casos](./import-cases)**: Creación de casos clínicos de prueba
+
+### Scripts de Análisis
+Herramientas para análisis estadístico y distribución de datos:
+
+- **Distribución de Entidades**: Análisis de casos por entidad
+- **Análisis de Pruebas**: Estadísticas de pruebas en casos
+
+### Archivos de Datos
+Archivos Excel con información de referencia:
+
+- **Archivos CIE**: Documentación de archivos CIE-10.xlsx y CIE-O.xlsx
+
+## Características Generales
+
+### 🔧 Funcionalidades Comunes
+Todos los scripts comparten estas características:
+
+- **Modo Dry-Run**: Previsualización de cambios sin ejecutar
+- **Validación de Datos**: Verificación de integridad antes de insertar
+- **Manejo de Errores**: Control robusto de excepciones
+- **Logging Detallado**: Registro completo de operaciones
+- **Deduplicación**: Prevención de registros duplicados
+- **Transacciones Seguras**: Operaciones atómicas en base de datos
+
+### 🚀 Uso General
+```bash
+# Ejecutar en modo previsualización
+python3 Scripts/script_name.py --dry-run
+
+# Ejecutar con cambios reales
+python3 Scripts/script_name.py
+
+# Algunos scripts soportan parámetros adicionales
+python3 Scripts/Import_patients.py --count 100 --dry-run
+```
+
+### 📋 Requisitos Previos
+- Python 3.8+
+- Conexión a MongoDB configurada
+- Dependencias instaladas (`pip install -r requirements.txt`)
+- Variables de entorno configuradas
+
+### 🔒 Consideraciones de Seguridad
+- Los scripts contienen datos sensibles (contraseñas de administradores)
+- Ejecutar solo en entornos de desarrollo/testing
+- Revisar datos antes de ejecutar en producción
+- Usar modo dry-run para validar cambios
+
+## Orden de Ejecución Recomendado
+
+Para una inicialización completa del sistema, ejecutar en este orden:
+
+1. **Administradores** → Crear usuarios del sistema
+2. **Entidades** → Cargar instituciones de salud
+3. **Patólogos** → Importar médicos especialistas
+4. **Enfermedades** → Cargar catálogos médicos
+5. **Pruebas** → Importar tipos de exámenes
+6. **Pacientes** → Generar datos de prueba (opcional)
+7. **Casos** → Crear casos de prueba (opcional)
+
+## Estructura de Archivos
+
+```
+Scripts/
+├── import_administrators.py     # Creación de administradores
+├── import_pathologists.py       # Importación de patólogos
+├── import_entities.py           # Carga de entidades de salud
+├── import_diseases.py           # Importación CIE-10
+├── import_cancer_diseases.py    # Importación CIE-O
+├── import_tests.py              # Carga de tipos de pruebas
+├── Import_patients.py           # Generación de pacientes
+├── Import_cases.py              # Creación de casos
+├── analyze_entity_distribution.py  # Análisis de distribución
+├── analyze_tests_in_cases.py    # Análisis de pruebas
+├── CIE-10.xlsx                  # Catálogo de enfermedades
+└── CIE-O.xlsx                   # Catálogo oncológico
+```
+
+## Monitoreo y Logs
+
+Los scripts generan logs detallados que incluyen:
+- Número de registros procesados
+- Registros creados vs. duplicados
+- Errores y advertencias
+- Tiempo de ejecución
+- Estadísticas de validación
+
+Esta documentación proporciona una guía completa para utilizar los scripts de PathSys de manera efectiva y segura.

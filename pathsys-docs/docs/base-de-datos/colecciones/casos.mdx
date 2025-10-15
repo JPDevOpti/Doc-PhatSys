@@ -1,0 +1,187 @@
+# Colección: Casos
+
+## Descripción General
+La colección `cases` es el núcleo del sistema PathSys, almacenando información completa de casos médicos, incluyendo datos del paciente, muestras, pruebas, patólogos asignados, prioridades, estados y resultados.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `case_code` | String | Sí | Código único del caso (formato específico) |
+| `entity_info` | Object | Sí | Información de la entidad médica |
+| `location_info` | Object | No | Información de ubicación |
+| `patient_info` | Object | Sí | Datos del paciente asociado |
+| `sample_info` | Object | Sí | Información de la muestra |
+| `assigned_pathologist` | Object | No | Patólogo asignado al caso |
+| `case_priority` | Object | Sí | Prioridad del caso |
+| `case_state` | Object | Sí | Estado actual del caso |
+| `additional_notes` | Array | No | Notas adicionales del caso |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+### Estructura de Subdocumentos
+
+#### EntityInfo
+```json
+{
+  "entity_id": "string",
+  "entity_name": "string", 
+  "entity_code": "string"
+}
+```
+
+#### LocationInfo
+```json
+{
+  "address": "string",
+  "city": "string",
+  "department": "string", 
+  "phone": "string"
+}
+```
+
+#### PatientInfo
+```json
+{
+  "patient_id": "string",
+  "identification": "string",
+  "patient_name": "string",
+  "birth_date": "date",
+  "gender": "string",
+  "care_type": "string"
+}
+```
+
+#### SampleInfo
+```json
+{
+  "sample_date": "datetime",
+  "sample_tests": [
+    {
+      "test_id": "string",
+      "test_name": "string",
+      "test_code": "string"
+    }
+  ]
+}
+```
+
+#### AssignedPathologist
+```json
+{
+  "pathologist_id": "string",
+  "pathologist_name": "string",
+  "pathologist_code": "string",
+  "assigned_date": "datetime"
+}
+```
+
+#### CasePriority
+```json
+{
+  "priority_level": "string",
+  "priority_reason": "string",
+  "set_date": "datetime"
+}
+```
+
+#### CaseState
+```json
+{
+  "current_state": "string",
+  "state_date": "datetime",
+  "state_reason": "string"
+}
+```
+
+#### AdditionalNote
+```json
+{
+  "note_id": "string",
+  "note_content": "string",
+  "note_date": "datetime",
+  "created_by": "string"
+}
+```
+
+## Validaciones
+
+- **case_code**: Único en el sistema, formato específico requerido
+- **entity_info**: Debe contener entity_id válido
+- **patient_info**: Debe contener patient_id válido y datos consistentes
+- **sample_info**: Debe tener al menos una prueba asociada
+- **case_priority**: priority_level debe ser valor válido del enum
+- **case_state**: current_state debe ser valor válido del enum
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de caso
+db.cases.createIndex({ "case_code": 1 }, { unique: true })
+
+// Índice para búsquedas por paciente
+db.cases.createIndex({ "patient_info.patient_id": 1 })
+
+// Índice para búsquedas por entidad
+db.cases.createIndex({ "entity_info.entity_id": 1 })
+
+// Índice para búsquedas por patólogo
+db.cases.createIndex({ "assigned_pathologist.pathologist_id": 1 })
+
+// Índice para filtros por estado
+db.cases.createIndex({ "case_state.current_state": 1 })
+
+// Índice para filtros por prioridad
+db.cases.createIndex({ "case_priority.priority_level": 1 })
+
+// Índice compuesto para reportes
+db.cases.createIndex({ 
+  "entity_info.entity_id": 1, 
+  "case_state.current_state": 1,
+  "created_at": -1 
+})
+```
+
+## Estados de Caso
+
+- **PENDING**: Caso pendiente de asignación
+- **ASSIGNED**: Caso asignado a patólogo
+- **IN_PROGRESS**: Caso en proceso de análisis
+- **COMPLETED**: Caso completado con resultados
+- **CANCELLED**: Caso cancelado
+
+## Niveles de Prioridad
+
+- **LOW**: Prioridad baja
+- **NORMAL**: Prioridad normal
+- **HIGH**: Prioridad alta
+- **URGENT**: Prioridad urgente
+
+## Relaciones
+
+- **Pacientes**: Cada caso pertenece a un paciente específico
+- **Entidades**: Cada caso está asociado a una entidad médica
+- **Patólogos**: Los casos pueden ser asignados a patólogos
+- **Pruebas**: Cada caso incluye una o más pruebas médicas
+- **Aprobaciones**: Los casos pueden requerir aprobaciones adicionales
+- **Tickets**: Los casos pueden generar tickets de soporte
+
+## Casos de Uso Principales
+
+1. **Creación de Casos**: Registro de nuevos casos médicos
+2. **Asignación de Patólogos**: Distribución de casos a especialistas
+3. **Seguimiento de Estados**: Monitoreo del progreso de casos
+4. **Gestión de Prioridades**: Clasificación y priorización de casos
+5. **Reportes de Productividad**: Análisis de tiempos y volúmenes
+6. **Búsqueda y Filtrado**: Localización de casos específicos
+
+## Consideraciones de Rendimiento
+
+- Implementar índices compuestos para consultas frecuentes
+- Considerar archivado de casos antiguos completados
+- Optimizar consultas por estado y prioridad
+- Implementar cache para casos activos frecuentemente consultados
+- Monitorear el crecimiento de la colección para particionamiento futuro

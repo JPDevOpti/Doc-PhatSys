@@ -1,0 +1,8 @@
+{
+  "label": "Scripts",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Scripts de inicialización, importación de datos y análisis del sistema PathSys."
+  }
+}

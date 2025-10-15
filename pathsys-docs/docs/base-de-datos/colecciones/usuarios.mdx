@@ -1,0 +1,224 @@
+# Colección: Usuarios
+
+## Descripción General
+La colección `users` gestiona la autenticación y autorización de usuarios en el sistema PathSys, incluyendo diferentes tipos de usuarios como patólogos, residentes, auxiliares y personal de facturación.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `username` | String | Sí | Nombre de usuario único |
+| `email` | String | Sí | Email único del usuario |
+| `password_hash` | String | Sí | Hash de la contraseña |
+| `user_type` | String | Sí | Tipo de usuario en el sistema |
+| `profile_id` | String | Sí | ID del perfil específico (patólogo, residente, etc.) |
+| `is_active` | Boolean | Sí | Estado activo/inactivo del usuario |
+| `last_login` | DateTime | No | Fecha del último acceso |
+| `failed_login_attempts` | Integer | Sí | Intentos fallidos de login |
+| `locked_until` | DateTime | No | Fecha hasta la cual está bloqueado |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Tipos de Usuario
+
+### UserTypeEnum
+```python
+class UserTypeEnum(str, Enum):
+    PATHOLOGIST = "pathologist"    # Patólogo
+    RESIDENT = "resident"          # Residente
+    AUXILIARY = "auxiliary"        # Auxiliar
+    BILLING = "billing"           # Personal de facturación
+    ADMIN = "admin"               # Administrador del sistema
+```
+
+## Validaciones
+
+- **username**: Único en el sistema, longitud mínima 3, máxima 50 caracteres
+- **email**: Formato de email válido, único en el sistema
+- **password_hash**: Hash seguro de la contraseña (bcrypt/argon2)
+- **user_type**: Debe ser uno de los valores del enum UserTypeEnum
+- **profile_id**: Debe corresponder a un ID válido en la colección del tipo de usuario
+- **failed_login_attempts**: Valor entero, por defecto 0, máximo 5
+- **is_active**: Valor booleano, por defecto `true`
+
+## Índices Recomendados
+
+```javascript
+// Índice único para username
+db.users.createIndex({ "username": 1 }, { unique: true })
+
+// Índice único para email
+db.users.createIndex({ "email": 1 }, { unique: true })
+
+// Índice para búsquedas por tipo de usuario
+db.users.createIndex({ "user_type": 1 })
+
+// Índice para filtros por estado activo
+db.users.createIndex({ "is_active": 1 })
+
+// Índice para búsquedas por profile_id
+db.users.createIndex({ "profile_id": 1 })
+
+// Índice compuesto para autenticación
+db.users.createIndex({ 
+  "username": 1, 
+  "is_active": 1 
+})
+
+// Índice para gestión de bloqueos
+db.users.createIndex({ "locked_until": 1 })
+```
+
+## Esquemas de Operación
+
+### UserCreate
+```python
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: EmailStr = Field(...)
+    password: str = Field(..., min_length=8, max_length=128)
+    user_type: UserTypeEnum = Field(...)
+    profile_id: str = Field(...)
+```
+
+### UserUpdate
+```python
+class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
+    is_active: Optional[bool] = None
+    password: Optional[str] = Field(None, min_length=8, max_length=128)
+```
+
+### UserResponse
+```python
+class UserResponse(BaseModel):
+    id: str = Field(...)
+    username: str = Field(...)
+    email: str = Field(...)
+    user_type: UserTypeEnum = Field(...)
+    profile_id: str = Field(...)
+    is_active: bool = Field(...)
+    last_login: Optional[datetime] = None
+    created_at: datetime = Field(...)
+    updated_at: datetime = Field(...)
+```
+
+## Relaciones
+
+- **Patólogos**: `profile_id` referencia a la colección `pathologists`
+- **Residentes**: `profile_id` referencia a la colección `residents`
+- **Auxiliares**: `profile_id` referencia a la colección `auxiliaries`
+- **Facturación**: `profile_id` referencia a la colección `billing`
+- **Tickets**: Los usuarios pueden crear tickets de soporte
+- **Casos**: Los usuarios pueden interactuar con casos según su tipo
+
+## Seguridad de Contraseñas
+
+### Requisitos de Contraseña
+- Longitud mínima: 8 caracteres
+- Debe incluir al menos una letra mayúscula
+- Debe incluir al menos una letra minúscula
+- Debe incluir al menos un número
+- Debe incluir al menos un carácter especial
+
+### Hash de Contraseñas
+```python
+import bcrypt
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+```
+
+## Sistema de Bloqueo
+
+### Política de Bloqueo
+- **Intentos permitidos**: 5 intentos fallidos
+- **Tiempo de bloqueo**: 30 minutos
+- **Bloqueo progresivo**: Incrementa con bloqueos repetidos
+- **Desbloqueo automático**: Después del tiempo especificado
+
+### Implementación
+```python
+def handle_failed_login(user_id: str):
+    user = get_user(user_id)
+    user.failed_login_attempts += 1
+    
+    if user.failed_login_attempts >= 5:
+        user.locked_until = datetime.utcnow() + timedelta(minutes=30)
+    
+    update_user(user)
+```
+
+## Casos de Uso Principales
+
+1. **Autenticación**: Verificación de credenciales de acceso
+2. **Autorización**: Control de permisos por tipo de usuario
+3. **Gestión de Sesiones**: Manejo de sesiones activas
+4. **Recuperación de Contraseñas**: Proceso de restablecimiento
+5. **Auditoría de Accesos**: Registro de actividad de usuarios
+6. **Gestión de Perfiles**: Vinculación con perfiles específicos
+
+## Permisos por Tipo de Usuario
+
+### Pathologist
+- Acceso completo a casos asignados
+- Creación y edición de reportes
+- Visualización de estadísticas personales
+
+### Resident
+- Acceso limitado a casos supervisados
+- Creación de reportes preliminares
+- Acceso a material educativo
+
+### Auxiliary
+- Gestión de muestras y casos
+- Actualización de estados de casos
+- Generación de reportes básicos
+
+### Billing
+- Acceso a información de facturación
+- Generación de reportes financieros
+- Gestión de entidades y precios
+
+### Admin
+- Acceso completo al sistema
+- Gestión de usuarios y permisos
+- Configuración del sistema
+
+## Consideraciones de Seguridad
+
+- Implementar autenticación de dos factores (2FA)
+- Auditar todos los cambios de contraseñas
+- Monitorear intentos de acceso sospechosos
+- Implementar políticas de expiración de contraseñas
+- Validar la fortaleza de las contraseñas
+- Proteger contra ataques de fuerza bruta
+
+## Consideraciones de Rendimiento
+
+- Implementar cache para datos de usuario frecuentemente consultados
+- Optimizar consultas de autenticación
+- Mantener índices actualizados para búsquedas por username y email
+- Considerar sesiones distribuidas para escalabilidad
+- Monitorear el rendimiento de las consultas de autorización
+
+## Integración con JWT
+
+```python
+def create_access_token(user: User) -> str:
+    payload = {
+        "user_id": str(user.id),
+        "username": user.username,
+        "user_type": user.user_type,
+        "profile_id": user.profile_id,
+        "exp": datetime.utcnow() + timedelta(hours=24)
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+```

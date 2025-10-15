@@ -1,5 +1,471 @@
 ---
 id: mod-auxiliaries
 title: Auxiliares
-sidebar_position: 11
+sidebar_position: 9
 ---
+
+# Módulo de Auxiliares
+
+## Objetivo
+
+El módulo de auxiliares gestiona el registro, administración y control de personal auxiliar del laboratorio de patología en PathSys. Permite crear, consultar, actualizar y eliminar auxiliares, así como gestionar sus credenciales de acceso al sistema, facilitando el control de acceso y la trazabilidad de actividades del personal de apoyo.
+
+## Estructura de Archivos
+
+```
+app/modules/auxiliaries/
+├── __init__.py                     # Comentario del módulo
+├── routes/
+│   └── auxiliar_routes.py         # Endpoints REST API
+├── services/
+│   ├── __init__.py               # Comentario de servicios
+│   └── auxiliar_service.py       # Lógica de negocio
+├── repositories/
+│   └── auxiliar_repository.py    # Operaciones de base de datos
+└── schemas/
+    ├── __init__.py               # Exports de esquemas
+    └── auxiliar.py               # Esquemas de validación
+```
+
+## Endpoints API
+
+### Crear Auxiliar
+- **POST** `/auxiliaries/`
+- **Descripción**: Crea un nuevo auxiliar en el sistema y su cuenta de usuario
+- **Request Body**: `AuxiliarCreate`
+- **Response**: `AuxiliarResponse` (201 Created)
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 409: Código de auxiliar o email ya existe
+  - 500: Error interno del servidor
+
+**Ejemplo de uso**:
+```json
+{
+    "auxiliar_code": "AUX001",
+    "auxiliar_name": "María González",
+    "auxiliar_email": "maria.gonzalez@pathsys.com",
+    "password": "securePassword123",
+    "is_active": true,
+    "observations": "Auxiliar de laboratorio especializada en preparación de muestras"
+}
+```
+
+### Listar Auxiliares
+- **GET** `/auxiliaries/`
+- **Descripción**: Obtiene lista de auxiliares activos con paginación
+- **Query Parameters**:
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 10, max: 100): Número máximo de registros
+- **Response**: `List[AuxiliarResponse]`
+
+**Ejemplo**: `GET /auxiliaries/?skip=0&limit=20`
+
+### Buscar Auxiliares
+- **GET** `/auxiliaries/search`
+- **Descripción**: Busca auxiliares con múltiples criterios de filtrado
+- **Query Parameters**:
+  - `q` (opcional): Término de búsqueda general (nombre, código, email)
+  - `auxiliar_name` (opcional): Filtrar por nombre específico
+  - `auxiliar_code` (opcional): Filtrar por código específico
+  - `auxiliar_email` (opcional): Filtrar por email específico
+  - `is_active` (opcional): Filtrar por estado activo
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 100, max: 1000): Número máximo de registros
+- **Response**: `List[AuxiliarResponse]`
+
+**Ejemplos**:
+- `GET /auxiliaries/search?q=maria&skip=0&limit=10`
+- `GET /auxiliaries/search?auxiliar_name=González&is_active=true`
+- `GET /auxiliaries/search?auxiliar_code=AUX001`
+
+### Obtener Auxiliar por Código
+- **GET** `/auxiliaries/{auxiliar_code}`
+- **Descripción**: Obtiene un auxiliar específico por su código
+- **Path Parameters**:
+  - `auxiliar_code`: Código único del auxiliar
+- **Response**: `AuxiliarResponse`
+- **Errores**:
+  - 404: Auxiliar no encontrado
+  - 500: Error interno del servidor
+
+**Ejemplo**: `GET /auxiliaries/AUX001`
+
+### Actualizar Auxiliar
+- **PUT** `/auxiliaries/{auxiliar_code}`
+- **Descripción**: Actualiza los datos de un auxiliar existente
+- **Path Parameters**:
+  - `auxiliar_code`: Código único del auxiliar
+- **Request Body**: `AuxiliarUpdate`
+- **Response**: `AuxiliarResponse`
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 404: Auxiliar no encontrado
+  - 409: Email ya existe
+  - 500: Error interno del servidor
+
+**Ejemplo de uso**:
+```json
+{
+    "auxiliar_name": "María González López",
+    "auxiliar_email": "maria.gonzalez.lopez@pathsys.com",
+    "is_active": true,
+    "observations": "Auxiliar senior con especialización en histopatología",
+    "password": "newSecurePassword456"
+}
+```
+
+### Eliminar Auxiliar
+- **DELETE** `/auxiliaries/{auxiliar_code}`
+- **Descripción**: Elimina un auxiliar del sistema (eliminación lógica)
+- **Path Parameters**:
+  - `auxiliar_code`: Código único del auxiliar
+- **Response**: `{"deleted": boolean, "auxiliar_code": string}`
+- **Errores**:
+  - 404: Auxiliar no encontrado
+  - 500: Error interno del servidor
+
+## Esquemas de Datos
+
+### AuxiliarBase
+Esquema base para auxiliares:
+```python
+{
+    "auxiliar_code": "string",      # Código único del auxiliar (max 11 chars)
+    "auxiliar_name": "string",      # Nombre completo (max 100 chars)
+    "auxiliar_email": "EmailStr",   # Email único válido
+    "is_active": "boolean",         # Estado activo/inactivo (default: true)
+    "observations": "string"        # Notas adicionales (max 500 chars, opcional)
+}
+```
+
+### AuxiliarCreate
+Esquema para crear auxiliares (hereda de AuxiliarBase):
+```python
+{
+    "auxiliar_code": "string",      # Requerido, único
+    "auxiliar_name": "string",      # Requerido
+    "auxiliar_email": "EmailStr",   # Requerido, único
+    "password": "string",           # Requerido (min 6, max 128 chars)
+    "is_active": "boolean",         # Default: true
+    "observations": "string"        # Opcional
+}
+```
+
+### AuxiliarUpdate
+Esquema para actualizar auxiliares:
+```python
+{
+    "auxiliar_name": "string",      # Opcional
+    "auxiliar_email": "EmailStr",   # Opcional, debe ser único
+    "is_active": "boolean",         # Opcional
+    "observations": "string",       # Opcional
+    "password": "string"            # Opcional (min 6, max 128 chars)
+}
+```
+
+### AuxiliarResponse
+Esquema de respuesta (hereda de AuxiliarBase):
+```python
+{
+    "id": "string",                 # ID único generado
+    "auxiliar_code": "string",
+    "auxiliar_name": "string",
+    "auxiliar_email": "EmailStr",
+    "is_active": "boolean",
+    "observations": "string",
+    "created_at": "datetime",       # Fecha de creación
+    "updated_at": "datetime"        # Fecha de última actualización
+}
+```
+
+### AuxiliarSearch
+Esquema para búsqueda de auxiliares:
+```python
+{
+    "q": "string",                  # Búsqueda general (opcional)
+    "auxiliar_name": "string",      # Filtro por nombre (opcional)
+    "auxiliar_code": "string",      # Filtro por código (opcional)
+    "auxiliar_email": "string",     # Filtro por email (opcional)
+    "is_active": "boolean"          # Filtro por estado (opcional)
+}
+```
+
+## Lógica de Negocio (AuxiliarService)
+
+### Funcionalidades Principales
+
+1. **Creación de Auxiliares**:
+   - Validación de unicidad del código de auxiliar
+   - Validación de unicidad del email
+   - Creación automática de cuenta de usuario
+   - Manejo de rollback en caso de error
+   - Asignación automática de timestamps
+
+2. **Consulta por Código**:
+   - Búsqueda exacta por código único
+   - Manejo de casos no encontrados
+
+3. **Listado de Auxiliares**:
+   - Paginación configurable (hasta 100 registros)
+   - Solo muestra auxiliares activos por defecto
+   - Ordenamiento por fecha de creación
+
+4. **Búsqueda Avanzada**:
+   - Búsqueda general con parámetro `q` (nombre, código, email)
+   - Filtros específicos por campo individual
+   - Búsqueda case-insensitive con regex
+   - Paginación en resultados (hasta 1,000 registros)
+
+5. **Actualización de Auxiliares**:
+   - Validación de existencia del auxiliar
+   - Validación de unicidad de email en actualizaciones
+   - Sincronización con cuenta de usuario
+   - Actualización parcial de campos
+
+6. **Eliminación de Auxiliares**:
+   - Verificación de existencia antes de eliminar
+   - Eliminación del registro de auxiliar
+   - Manejo de dependencias con usuarios
+
+### Integración con UserManagementService
+
+El servicio de auxiliares se integra con `UserManagementService` para:
+- Crear cuentas de usuario automáticamente
+- Sincronizar cambios de datos personales
+- Gestionar credenciales de acceso
+- Mantener consistencia entre auxiliares y usuarios
+
+## Operaciones de Repositorio (AuxiliarRepository)
+
+### Métodos Principales
+
+- `create(auxiliar)`: Inserta nuevo auxiliar con timestamps
+- `get_by_auxiliar_code(code)`: Busca auxiliar por código exacto
+- `get_by_email(email)`: Busca auxiliar por email exacto
+- `list_active(skip, limit)`: Lista auxiliares activos con paginación
+- `search(search_params, skip, limit)`: Búsqueda avanzada con filtros
+- `update_by_auxiliar_code(code, data)`: Actualiza auxiliar por código
+- `delete_by_auxiliar_code(code)`: Elimina auxiliar por código
+
+### Características Técnicas
+
+- **Conversión de ObjectId**: Transformación automática de `_id` a `id` string
+- **Búsqueda con Regex**: Búsquedas case-insensitive para nombres y emails
+- **Paginación Eficiente**: Uso de `skip` y `limit` para grandes volúmenes
+- **Timestamps Automáticos**: Fechas de creación y actualización
+- **Manejo de Duplicados**: Control de errores de clave duplicada
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+
+1. **Código de Auxiliar**:
+   - Campo requerido
+   - Máximo 11 caracteres
+   - Debe ser único en el sistema
+
+2. **Nombre del Auxiliar**:
+   - Campo requerido
+   - Máximo 100 caracteres
+   - Nombre completo del auxiliar
+
+3. **Email del Auxiliar**:
+   - Campo requerido
+   - Formato de email válido (EmailStr)
+   - Debe ser único en el sistema
+
+4. **Contraseña**:
+   - Requerida solo en creación
+   - Mínimo 6 caracteres, máximo 128
+   - Opcional en actualizaciones
+
+5. **Observaciones**:
+   - Campo opcional
+   - Máximo 500 caracteres
+   - Notas adicionales sobre el auxiliar
+
+### Manejo de Errores
+
+- **BadRequestError (400)**: Datos de entrada inválidos
+- **ConflictError (409)**: Código de auxiliar o email duplicado
+- **NotFoundError (404)**: Auxiliar no encontrado
+- **Internal Server Error (500)**: Errores no controlados
+- **Validation Error (422)**: Errores de validación de Pydantic
+
+## Búsqueda Avanzada
+
+### Tipos de Búsqueda
+
+1. **Búsqueda General (parámetro `q`)**:
+   - Busca en nombre, código y email simultáneamente
+   - Utiliza operador `$or` de MongoDB
+   - Búsqueda case-insensitive con regex
+
+2. **Búsqueda por Nombre**:
+   - Búsqueda parcial en el campo `auxiliar_name`
+   - Case-insensitive con regex
+   - Útil para encontrar auxiliares por apellido
+
+3. **Búsqueda por Código**:
+   - Búsqueda exacta en el campo `auxiliar_code`
+   - Ideal para búsquedas precisas
+
+4. **Búsqueda por Email**:
+   - Búsqueda parcial en el campo `auxiliar_email`
+   - Case-insensitive con regex
+   - Útil para encontrar por dominio
+
+5. **Filtrado por Estado**:
+   - Filtro booleano por `is_active`
+   - Permite mostrar solo auxiliares activos o inactivos
+
+### Características de Búsqueda
+
+- **Case-insensitive**: No distingue mayúsculas/minúsculas
+- **Búsqueda parcial**: Encuentra coincidencias parciales
+- **Combinación de filtros**: Múltiples criterios simultáneos
+- **Paginación**: Control de resultados con `skip` y `limit`
+- **Alto rendimiento**: Optimizada para hasta 1,000 resultados
+
+## Integración con Otros Módulos
+
+### Módulos Relacionados
+
+1. **Autenticación**: Gestión de credenciales de acceso
+2. **Casos**: Asignación de auxiliares a casos específicos
+3. **Pruebas**: Registro de auxiliares en procesamiento de muestras
+4. **Auditoría**: Trazabilidad de actividades del personal
+5. **Reportes**: Estadísticas de productividad por auxiliar
+
+### Consideraciones de Integración
+
+- Los códigos de auxiliar deben ser estables y únicos
+- La eliminación debe considerar referencias en otros módulos
+- El estado `is_active` afecta el acceso al sistema
+- Sincronización automática con cuentas de usuario
+- Mantenimiento de integridad referencial
+
+## Gestión de Usuarios
+
+### Creación Automática de Usuarios
+
+Cuando se crea un auxiliar, automáticamente se:
+1. Crea una cuenta de usuario en la colección `users`
+2. Asigna el rol de auxiliar
+3. Configura las credenciales de acceso
+4. Sincroniza el estado activo/inactivo
+
+### Sincronización de Datos
+
+Las actualizaciones de auxiliares se sincronizan con:
+- Nombre del usuario
+- Email del usuario
+- Estado activo/inactivo
+- Contraseña (si se proporciona)
+
+### Rollback en Errores
+
+Si falla la creación del usuario:
+- Se elimina automáticamente el auxiliar creado
+- Se mantiene la consistencia de datos
+- Se reporta el error apropiado
+
+## Optimizaciones de Base de Datos
+
+### Índices Recomendados
+
+```javascript
+// MongoDB indexes
+db.auxiliaries.createIndex({ "auxiliar_code": 1 }, { unique: true })
+db.auxiliaries.createIndex({ "auxiliar_email": 1 }, { unique: true })
+db.auxiliaries.createIndex({ "is_active": 1 })
+db.auxiliaries.createIndex({ "created_at": -1 })
+db.auxiliaries.createIndex({ 
+    "auxiliar_name": "text", 
+    "auxiliar_email": "text" 
+})
+```
+
+### Consideraciones de Rendimiento
+
+- Búsquedas optimizadas con índices de texto completo
+- Paginación eficiente para listados grandes
+- Límites de consulta para prevenir sobrecarga
+- Índices únicos para prevenir duplicados
+
+## Variables de Configuración
+
+El módulo utiliza las siguientes configuraciones del sistema:
+
+- **Database Connection**: Conexión a MongoDB
+- **User Management**: Configuración del servicio de usuarios
+- **Pagination Limits**: Límites máximos de registros
+- **Password Policy**: Políticas de contraseñas
+- **Email Validation**: Configuración de validación de emails
+
+## Casos de Uso Comunes
+
+### 1. Registro de Nuevo Auxiliar
+```python
+# Crear auxiliar con cuenta de usuario
+auxiliar_data = {
+    "auxiliar_code": "AUX001",
+    "auxiliar_name": "María González",
+    "auxiliar_email": "maria.gonzalez@pathsys.com",
+    "password": "securePassword123",
+    "is_active": True,
+    "observations": "Auxiliar especializada en histopatología"
+}
+```
+
+### 2. Búsqueda de Auxiliares por Nombre
+```python
+# Buscar auxiliares por apellido
+search_params = {
+    "auxiliar_name": "González",
+    "is_active": True
+}
+```
+
+### 3. Actualización de Datos de Auxiliar
+```python
+# Actualizar email y observaciones
+update_data = {
+    "auxiliar_email": "maria.gonzalez.nuevo@pathsys.com",
+    "observations": "Auxiliar senior con certificación en citología"
+}
+```
+
+### 4. Búsqueda General de Auxiliares
+```python
+# Búsqueda general por término
+search_params = {
+    "q": "maria",
+    "skip": 0,
+    "limit": 10
+}
+```
+
+### 5. Listado de Auxiliares Activos
+```python
+# Obtener auxiliares activos con paginación
+list_params = {
+    "skip": 0,
+    "limit": 20
+}
+```
+
+## Características Técnicas Destacadas
+
+- **Códigos Únicos**: Sistema de códigos únicos por auxiliar
+- **Gestión Integrada de Usuarios**: Creación automática de cuentas
+- **Búsqueda Avanzada**: Múltiples criterios de filtrado
+- **Paginación Eficiente**: Manejo de grandes volúmenes de datos
+- **Validaciones Robustas**: Prevención de duplicados y datos inválidos
+- **Sincronización Automática**: Consistencia entre auxiliares y usuarios
+- **Rollback Automático**: Manejo de errores con reversión de cambios
+- **Timestamps Automáticos**: Control de fechas de creación y actualización
+- **Búsqueda Case-insensitive**: Búsquedas flexibles y amigables
+
+El módulo de auxiliares proporciona una gestión completa del personal auxiliar en PathSys, con funcionalidades robustas de CRUD, búsqueda avanzada, integración con el sistema de usuarios y manejo eficiente de errores, asegurando la integridad y consistencia de los datos del personal de apoyo.

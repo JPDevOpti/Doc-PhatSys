@@ -1,0 +1,341 @@
+# Dashboard de Estadísticas
+
+El dashboard proporciona métricas principales y resúmenes ejecutivos del sistema PathSys, ofreciendo una vista consolidada del rendimiento general.
+
+## Objetivo
+
+Proporcionar métricas clave para:
+- Monitoreo del rendimiento general del sistema
+- Análisis de tendencias temporales
+- Métricas de productividad global
+- Validación de patólogos activos
+- Resúmenes ejecutivos para toma de decisiones
+
+## Endpoints Disponibles
+
+### 1. Casos por Mes (General)
+
+**GET** `/api/v1/cases/statistics/dashboard/cases-by-month/{year}`
+
+Obtiene estadísticas de casos por mes para un año específico.
+
+#### Parámetros
+- **year** (path): Año a consultar (ej: 2025)
+
+#### Response
+```json
+{
+  "year": 2025,
+  "monthly_cases": [120, 135, 142, 158, 167, 145, 139, 152, 148, 156, 162, 171],
+  "total_cases": 1795,
+  "average_monthly": 149.6,
+  "peak_month": {
+    "month": 12,
+    "cases": 171
+  },
+  "lowest_month": {
+    "month": 1,
+    "cases": 120
+  }
+}
+```
+
+### 2. Casos por Mes (Por Patólogo)
+
+**GET** `/api/v1/cases/statistics/dashboard/cases-by-month/pathologist/{year}`
+
+Obtiene estadísticas de casos por mes para un patólogo específico.
+
+#### Parámetros
+- **year** (path): Año a consultar
+- **pathologist_code** (query): Código del patólogo
+
+#### Response
+```json
+{
+  "year": 2025,
+  "pathologist_code": "PATH001",
+  "pathologist_name": "Dr. Carlos Rodríguez",
+  "monthly_cases": [45, 52, 48, 61, 58, 55, 49, 63, 57, 59, 62, 68],
+  "total_cases": 677,
+  "average_monthly": 56.4,
+  "performance_trend": "increasing",
+  "peak_month": {
+    "month": 12,
+    "cases": 68
+  }
+}
+```
+
+### 3. Resumen del Dashboard
+
+**GET** `/api/v1/cases/statistics/dashboard/overview`
+
+Proporciona un resumen ejecutivo con métricas principales.
+
+#### Response
+```json
+{
+  "current_period": "2025-01",
+  "total_cases": {
+    "current_month": 156,
+    "previous_month": 142,
+    "change_percentage": 9.9,
+    "trend": "up"
+  },
+  "cases_by_state": {
+    "en_proceso": 23,
+    "por_firmar": 18,
+    "por_entregar": 12,
+    "completado": 103
+  },
+  "average_processing_time": {
+    "current": 3.2,
+    "previous": 3.5,
+    "improvement": 0.3,
+    "unit": "days"
+  },
+  "active_pathologists": 8,
+  "entities_served": 15,
+  "completion_rate": 89.7,
+  "urgent_cases": {
+    "total": 12,
+    "completed": 10,
+    "pending": 2
+  }
+}
+```
+
+### 4. Métricas Generales
+
+**GET** `/api/v1/cases/statistics/metrics/general`
+
+Obtiene métricas generales del sistema.
+
+#### Response
+```json
+{
+  "period": "2025-01",
+  "volume_metrics": {
+    "total_cases": 156,
+    "daily_average": 5.0,
+    "weekly_average": 35.1,
+    "growth_rate": 12.5
+  },
+  "quality_metrics": {
+    "completion_rate": 89.7,
+    "on_time_delivery": 94.2,
+    "rework_rate": 2.1,
+    "error_rate": 0.8
+  },
+  "efficiency_metrics": {
+    "average_processing_time": 3.2,
+    "median_processing_time": 2.8,
+    "fastest_case": 1.2,
+    "slowest_case": 8.5
+  },
+  "resource_metrics": {
+    "pathologist_utilization": 78.5,
+    "cases_per_pathologist": 19.5,
+    "peak_workload_day": "2025-01-15"
+  }
+}
+```
+
+### 5. Métricas por Patólogo
+
+**GET** `/api/v1/cases/statistics/metrics/pathologist/{pathologist_code}`
+
+Obtiene métricas específicas de un patólogo.
+
+#### Parámetros
+- **pathologist_code** (path): Código del patólogo
+
+#### Response
+```json
+{
+  "pathologist": {
+    "code": "PATH001",
+    "name": "Dr. Carlos Rodríguez",
+    "specialization": "Anatomía Patológica"
+  },
+  "period": "2025-01",
+  "performance_metrics": {
+    "total_cases": 67,
+    "completed_cases": 62,
+    "pending_cases": 5,
+    "completion_rate": 92.5
+  },
+  "quality_metrics": {
+    "average_processing_time": 2.8,
+    "on_time_delivery": 96.8,
+    "rework_rate": 1.2,
+    "patient_satisfaction": 4.7
+  },
+  "productivity_metrics": {
+    "cases_per_day": 2.2,
+    "working_days": 31,
+    "efficiency_score": 87.3,
+    "rank_among_peers": 2
+  },
+  "workload_distribution": {
+    "normal_priority": 58,
+    "urgent_priority": 9,
+    "complex_cases": 15,
+    "routine_cases": 52
+  }
+}
+```
+
+### 6. Validar Patólogo
+
+**GET** `/api/v1/cases/statistics/dashboard/validate-pathologist/{pathologist_code}`
+
+Valida si un patólogo existe y está activo en el sistema.
+
+#### Response
+```json
+{
+  "pathologist_code": "PATH001",
+  "exists": true,
+  "is_active": true,
+  "name": "Dr. Carlos Rodríguez",
+  "specialization": "Anatomía Patológica",
+  "cases_this_month": 67,
+  "last_activity": "2025-01-15T14:30:00Z"
+}
+```
+
+## Esquemas de Datos
+
+### CasesByMonthResponse
+```python
+class CasesByMonthResponse(BaseModel):
+    year: int
+    monthly_cases: List[int]  # 12 elementos (enero a diciembre)
+    total_cases: int
+    average_monthly: float
+    peak_month: Dict[str, Any]
+    lowest_month: Dict[str, Any]
+    pathologist_code: Optional[str] = None
+    pathologist_name: Optional[str] = None
+```
+
+### DashboardOverviewResponse
+```python
+class DashboardOverviewResponse(BaseModel):
+    current_period: str
+    total_cases: Dict[str, Any]
+    cases_by_state: Dict[str, int]
+    average_processing_time: Dict[str, Any]
+    active_pathologists: int
+    entities_served: int
+    completion_rate: float
+    urgent_cases: Dict[str, int]
+```
+
+### MetricsResponse
+```python
+class MetricsResponse(BaseModel):
+    period: str
+    volume_metrics: Dict[str, Any]
+    quality_metrics: Dict[str, Any]
+    efficiency_metrics: Dict[str, Any]
+    resource_metrics: Optional[Dict[str, Any]] = None
+    pathologist: Optional[Dict[str, Any]] = None
+```
+
+## Lógica de Negocio
+
+### DashboardStatisticsService
+
+#### Métodos Principales
+
+**`get_cases_by_month(year: int)`**
+- Agrega casos por mes para el año especificado
+- Calcula estadísticas adicionales (promedio, picos)
+- Optimiza consultas con índices temporales
+
+**`get_cases_by_month_pathologist(year: int, pathologist_code: str)`**
+- Filtra casos por patólogo específico
+- Incluye análisis de tendencias de rendimiento
+- Valida existencia del patólogo
+
+**`get_dashboard_overview()`**
+- Consolida múltiples métricas en una vista
+- Calcula comparaciones con períodos anteriores
+- Incluye indicadores de tendencias
+
+**`get_metrics_general()`**
+- Agrega métricas de volumen, calidad y eficiencia
+- Calcula percentiles y promedios
+- Incluye métricas de recursos
+
+**`get_metrics_pathologist(pathologist_code: str)`**
+- Métricas específicas por especialista
+- Comparaciones con pares
+- Análisis de carga de trabajo
+
+## Agregaciones y Cálculos
+
+### Métricas de Volumen
+- **Total de casos**: Conteo directo por período
+- **Promedio diario**: Total / días del período
+- **Tasa de crecimiento**: Comparación con período anterior
+- **Distribución temporal**: Casos por día/semana/mes
+
+### Métricas de Calidad
+- **Tasa de completitud**: Casos completados / Total
+- **Entrega a tiempo**: Casos dentro de SLA / Total
+- **Tasa de retrabajo**: Casos modificados post-firma
+- **Tasa de error**: Casos con correcciones
+
+### Métricas de Eficiencia
+- **Tiempo promedio**: Suma tiempos / Número casos
+- **Tiempo mediano**: Percentil 50 de tiempos
+- **Casos más rápidos/lentos**: Min/Max tiempos
+- **Distribución de tiempos**: Histograma de procesamiento
+
+## Optimizaciones
+
+### Índices de Base de Datos
+```javascript
+// Índices para consultas temporales
+db.cases.createIndex({ "created_at": 1 })
+db.cases.createIndex({ "created_at": 1, "state": 1 })
+db.cases.createIndex({ "assigned_pathologist.id": 1, "created_at": 1 })
+
+// Índices compuestos para agregaciones
+db.cases.createIndex({ 
+  "created_at": 1, 
+  "assigned_pathologist.id": 1, 
+  "state": 1 
+})
+```
+
+### Cache de Resultados
+- Cache de métricas por 1 hora
+- Invalidación automática en actualizaciones
+- Cache específico por patólogo
+- Compresión de respuestas grandes
+
+### Consultas Optimizadas
+- Agregaciones MongoDB nativas
+- Pipelines de transformación eficientes
+- Consultas paralelas para múltiples métricas
+- Límites de tiempo para consultas complejas
+
+## Configuración
+
+### Variables de Entorno
+```bash
+# Configuración de dashboard
+DASHBOARD_CACHE_TTL=3600
+DASHBOARD_MAX_YEARS=5
+ENABLE_PATHOLOGIST_VALIDATION=true
+
+# Configuración de métricas
+METRICS_PRECISION=2
+INCLUDE_HISTORICAL_COMPARISON=true
+CALCULATE_TRENDS=true
+```

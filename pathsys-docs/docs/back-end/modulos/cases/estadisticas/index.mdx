@@ -1,0 +1,187 @@
+# Estadísticas de Casos
+
+El submódulo de estadísticas proporciona análisis completos y reportes detallados sobre el rendimiento del sistema PathSys, incluyendo métricas de casos, patólogos, entidades y oportunidad de atención.
+
+## Visión General
+
+Este submódulo maneja múltiples dimensiones de análisis:
+
+- **Dashboard General**: Métricas principales y resúmenes ejecutivos
+- **Estadísticas por Entidad**: Rendimiento y análisis por EPS/entidades
+- **Análisis de Oportunidad**: Tiempos de respuesta y cumplimiento de SLA
+- **Rendimiento de Patólogos**: Productividad y calidad por especialista
+- **Estadísticas por Pruebas**: Análisis de tipos de exámenes y frecuencias
+
+## Estructura del Submódulo
+
+```
+statistics/
+├── routes/
+│   ├── dashboard_statistics_routes.py      # Dashboard principal
+│   ├── entity_statistics_routes.py         # Estadísticas por entidad
+│   ├── opportunity_statistics_routes.py    # Análisis de oportunidad
+│   ├── pathologist_statistics_routes.py    # Rendimiento de patólogos
+│   ├── test_statistics_routes.py          # Estadísticas por pruebas
+│   └── statistics_router.py               # Router principal
+├── services/
+│   ├── dashboard_statistics_service.py     # Lógica de dashboard
+│   ├── entity_statistics_service.py        # Lógica por entidad
+│   ├── opportunity_statistics_service.py   # Lógica de oportunidad
+│   ├── pathologist_statistics_service.py   # Lógica de patólogos
+│   └── test_statistics_service.py         # Lógica por pruebas
+├── repositories/
+│   ├── dashboard_statistics_repository.py  # Acceso a datos dashboard
+│   ├── entity_statistics_repository.py     # Acceso a datos entidades
+│   ├── opportunity_statistics_repository.py # Acceso a datos oportunidad
+│   ├── pathologist_statistics_repository.py # Acceso a datos patólogos
+│   └── test_statistics_repository.py      # Acceso a datos pruebas
+└── schemas/
+    ├── dashboard_statistics_schemas.py     # Esquemas dashboard
+    ├── entity_statistics_schemas.py        # Esquemas entidades
+    ├── opportunity_statistics_schemas.py   # Esquemas oportunidad
+    ├── pathologist_statistics_schemas.py   # Esquemas patólogos
+    └── test_statistics_schemas.py         # Esquemas pruebas
+```
+
+## Componentes Principales
+
+### 📊 **Dashboard General**
+Métricas principales del sistema con resúmenes ejecutivos, casos por mes, métricas generales y validaciones de patólogos.
+
+**Endpoints principales:**
+- `GET /statistics/dashboard/cases-by-month/{year}` - Casos por mes
+- `GET /statistics/dashboard/overview` - Resumen general
+- `GET /statistics/metrics/general` - Métricas principales
+
+### 🏥 **Estadísticas por Entidad**
+Análisis detallado del rendimiento por EPS y entidades de salud.
+
+**Endpoints principales:**
+- `GET /statistics/entities/monthly-performance` - Rendimiento mensual
+- `GET /statistics/entities/details` - Detalles por entidad
+- `GET /statistics/entities/pathologists` - Patólogos por entidad
+
+### ⏱️ **Análisis de Oportunidad**
+Métricas de tiempos de respuesta y cumplimiento de SLA.
+
+**Endpoints principales:**
+- `GET /statistics/opportunity/monthly` - Oportunidad mensual
+- `GET /statistics/opportunity/details` - Detalles de oportunidad
+- `GET /statistics/opportunity/trends` - Tendencias temporales
+
+### 👨‍⚕️ **Rendimiento de Patólogos**
+Análisis de productividad y calidad por especialista.
+
+**Endpoints principales:**
+- `GET /statistics/pathologists/performance` - Rendimiento individual
+- `GET /statistics/pathologists/comparison` - Comparación entre patólogos
+- `GET /statistics/pathologists/workload` - Carga de trabajo
+
+### 🧪 **Estadísticas por Pruebas**
+Análisis de tipos de exámenes, frecuencias y tendencias.
+
+**Endpoints principales:**
+- `GET /statistics/tests/frequency` - Frecuencia por tipo
+- `GET /statistics/tests/trends` - Tendencias temporales
+- `GET /statistics/tests/performance` - Rendimiento por prueba
+
+## Características Principales
+
+### Agregaciones Temporales
+- **Mensual**: Análisis por mes específico
+- **Anual**: Comparaciones anuales
+- **Trimestral**: Tendencias trimestrales
+- **Semanal**: Análisis de corto plazo
+
+### Filtros Avanzados
+- **Por Entidad**: EPS específicas
+- **Por Patólogo**: Especialista individual
+- **Por Tipo de Prueba**: Examen específico
+- **Por Estado**: Casos en diferentes etapas
+- **Por Prioridad**: Normal vs Prioritario
+
+### Métricas Calculadas
+- **Volumen**: Cantidad de casos procesados
+- **Oportunidad**: Tiempos de respuesta promedio
+- **Calidad**: Tasas de error y retrabajos
+- **Productividad**: Casos por patólogo
+- **Cumplimiento**: Adherencia a SLA
+
+## Tipos de Respuesta
+
+### Métricas Básicas
+```json
+{
+  "total_cases": 1250,
+  "completed_cases": 1180,
+  "pending_cases": 70,
+  "average_processing_time": 3.2,
+  "period": "2025-01"
+}
+```
+
+### Datos Temporales
+```json
+{
+  "year": 2025,
+  "monthly_data": [120, 135, 142, 158, 167, 145, 139, 152, 148, 156, 162, 171],
+  "total_year": 1795
+}
+```
+
+### Análisis Comparativo
+```json
+{
+  "entities": [
+    {
+      "name": "EPS Salud Total",
+      "cases": 450,
+      "avg_time": 2.8,
+      "compliance": 95.2
+    },
+    {
+      "name": "Nueva EPS",
+      "cases": 380,
+      "avg_time": 3.1,
+      "compliance": 92.1
+    }
+  ]
+}
+```
+
+## Navegación del Submódulo
+
+Explora cada componente para documentación detallada:
+
+- [Dashboard General](./dashboard) - Métricas principales y resúmenes
+- [Estadísticas por Entidad](./entidades) - Análisis por EPS
+- [Análisis de Oportunidad](./oportunidad) - Tiempos y SLA
+- [Rendimiento de Patólogos](./patologos) - Productividad especialistas
+- [Estadísticas por Pruebas](./pruebas) - Análisis de exámenes
+
+## Configuración y Optimización
+
+### Variables de Entorno
+```bash
+# Configuración de estadísticas
+STATS_CACHE_TTL=3600  # Cache TTL en segundos
+STATS_MAX_MONTHS=24   # Máximo meses a consultar
+ENABLE_STATS_CACHE=true
+
+# Configuración de agregaciones
+STATS_BATCH_SIZE=1000
+STATS_PARALLEL_QUERIES=5
+STATS_TIMEOUT=30
+```
+
+### Optimizaciones de Base de Datos
+- Índices específicos para consultas estadísticas
+- Agregaciones pre-calculadas para métricas frecuentes
+- Cache de resultados para consultas repetitivas
+- Particionamiento temporal de datos históricos
+
+### Consideraciones de Rendimiento
+- Consultas asíncronas para múltiples métricas
+- Paginación para grandes volúmenes de datos
+- Compresión de respuestas JSON
+- Cache distribuido para resultados frecuentes

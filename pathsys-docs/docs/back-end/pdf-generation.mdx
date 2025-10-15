@@ -1,0 +1,503 @@
+---
+id: pdf-generation
+title: Generación de PDFs
+sidebar_position: 5
+---
+
+# Generación de PDFs en PathSys
+
+PathSys incluye un sistema completo de generación de PDFs para crear informes de resultados de casos patológicos. Este sistema utiliza tecnologías modernas para generar documentos profesionales con formato médico estándar.
+
+## Arquitectura del Sistema
+
+### Componentes Principales
+
+- **CasePdfService**: Servicio backend para generación de PDFs
+- **PDF Routes**: Endpoints API para solicitar PDFs
+- **HTML Template**: Plantilla Jinja2 para el formato del informe
+- **Frontend Components**: Componentes Vue.js para interacción del usuario
+
+## Backend - Servicio de PDF
+
+### CasePdfService
+
+**Ubicación**: `Back-End/app/modules/cases/services/pdf_service.py`
+
+El servicio principal que maneja toda la lógica de generación de PDFs.
+
+#### Funcionalidades Principales
+
+- **Generación de PDFs**: Convierte datos de casos a documentos PDF
+- **Mapeo de Datos**: Transforma estructuras de datos para compatibilidad con plantillas
+- **Gestión de Firmas**: Incluye firmas digitales de patólogos
+- **Pruebas Complementarias**: Integra solicitudes de aprobación pendientes
+
+#### Dependencias Técnicas
+
+```python
+# Dependencias principales
+from playwright.async_api import async_playwright  # Generación PDF
+from jinja2 import Environment, FileSystemLoader    # Templates
+from pathlib import Path                           # Gestión de archivos
+```
+
+#### Método Principal
+
+```python
+async def generate_case_pdf(self, case_code: str) -> bytes:
+    """
+    Genera un PDF completo del informe de resultados
+    
+    Args:
+        case_code: Código único del caso (ej: 2025-00001)
+        
+    Returns:
+        bytes: Archivo PDF en formato binario
+        
+    Raises:
+        ValueError: Si el caso no existe
+        RuntimeError: Si Playwright no está instalado
+    """
+```
+
+#### Proceso de Generación
+
+1. **Obtención de Datos**: Recupera información completa del caso
+2. **Mapeo de Estructura**: Convierte datos al formato de plantilla
+3. **Pruebas Complementarias**: Busca solicitudes pendientes
+4. **Firma del Patólogo**: Carga imagen de firma desde archivos
+5. **Renderizado HTML**: Procesa plantilla Jinja2
+6. **Conversión PDF**: Utiliza Playwright/Chromium para generar PDF
+
+#### Configuración de PDF
+
+```python
+pdf_bytes = await page.pdf(
+    format="A4",                    # Tamaño estándar médico
+    margin={                        # Márgenes profesionales
+        "top": "20mm", 
+        "right": "15mm", 
+        "bottom": "20mm", 
+        "left": "15mm"
+    },
+    print_background=True,          # Incluir estilos de fondo
+)
+```
+
+### Mapeo de Datos
+
+#### Estructura de Caso Mapeada
+
+```python
+mapped_case = {
+    # Información básica
+    'caso_code': str,
+    'fecha_creacion': datetime,
+    'fecha_firma': datetime,
+    'fecha_entrega': datetime,
+    
+    # Información del paciente
+    'paciente': {
+        'nombre': str,
+        'paciente_code': str,
+        'identification_type': str,
+        'identification_number': str,
+        'edad': str,
+        'sexo': str,
+        'telefono': str,
+        'entidad_info': {'nombre': str}
+    },
+    
+    # Información médica
+    'medico_solicitante': str,
+    'servicio': str,
+    'patologo_asignado': {
+        'nombre': str,
+        'codigo': str,
+        'registro_medico': str
+    },
+    
+    # Muestras y pruebas
+    'muestras': [
+        {
+            'region_cuerpo': str,
+            'pruebas': [
+                {
+                    'id': str,
+                    'codigo': str,
+                    'nombre': str,
+                    'cantidad': int
+                }
+            ]
+        }
+    ],
+    
+    # Resultados
+    'resultado': {
+        'metodo': list,
+        'resultado_macro': str,
+        'resultado_micro': str,
+        'diagnostico': str,
+        'observaciones': str,
+        'diagnostico_cie10': {
+            'codigo': str,
+            'nombre': str
+        },
+        'diagnostico_cieo': {
+            'codigo': str,
+            'nombre': str
+        }
+    }
+}
+```
+
+### Gestión de Firmas
+
+#### Ubicación de Firmas
+
+```
+uploads/signatures/
+├── *{pathologist_id}*.png
+├── *{pathologist_id}*.jpg
+└── *{pathologist_id}*.jpeg
+```
+
+#### Proceso de Carga
+
+1. **Búsqueda**: Localiza archivos que contengan el ID del patólogo
+2. **Lectura**: Carga el archivo de imagen
+3. **Codificación**: Convierte a Base64 para inclusión en HTML
+4. **Formato**: Genera data URI apropiado según tipo de imagen
+
+```python
+# Ejemplo de data URI generado
+"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+```
+
+## API Routes
+
+### Endpoint de Generación
+
+**Ubicación**: `Back-End/app/modules/cases/routes/pdf_routes.py`
+
+```python
+@router.get("/{case_code}/pdf")
+async def generate_case_pdf(case_code: str) -> StreamingResponse
+```
+
+#### Parámetros
+
+- **case_code**: Código único del caso (requerido)
+
+#### Respuesta
+
+- **Content-Type**: `application/pdf`
+- **Content-Disposition**: `inline; filename=caso-{case_code}.pdf`
+- **Body**: Stream de bytes del PDF generado
+
+#### Códigos de Estado
+
+- **200**: PDF generado exitosamente
+- **404**: Caso no encontrado
+- **500**: Error interno (Playwright no instalado, error de template, etc.)
+
+#### Ejemplo de Uso
+
+```bash
+GET /api/v1/cases/2025-00001/pdf
+```
+
+## Template HTML
+
+### Ubicación y Estructura
+
+**Archivo**: `Back-End/app/modules/cases/templates/case_report.html`
+
+### Características del Template
+
+#### Configuración de Página
+
+```css
+@page {
+    size: A4;
+    margin: 2mm 15mm 20mm 15mm;
+    
+    /* Footer automático */
+    @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+    }
+    
+    /* Nota legal */
+    @bottom-center {
+        content: "Los informes se archivan por 15 años";
+    }
+}
+```
+
+#### Secciones del Informe
+
+1. **Header**: Logos institucionales y código de caso
+2. **Información del Paciente**: Datos demográficos y entidad
+3. **Información Médica**: Médico solicitante y servicio
+4. **Muestras y Pruebas**: Detalle de especímenes y exámenes
+5. **Resultados**: Hallazgos macro y microscópicos
+6. **Diagnósticos**: Clasificaciones CIE-10 y CIE-O
+7. **Firma**: Firma digital del patólogo
+8. **Pruebas Complementarias**: Solicitudes pendientes (si aplica)
+
+#### Variables de Template
+
+```jinja2
+{{ case.caso_code }}                    # Código del caso
+{{ case.paciente.nombre }}              # Nombre del paciente
+{{ case.resultado.diagnostico }}        # Diagnóstico principal
+{{ pathologist_signature }}             # Firma en Base64
+{{ pruebas_complementarias }}           # Pruebas pendientes
+```
+
+## Frontend - Componentes
+
+### PrintPdfButton Component
+
+**Ubicación**: `Front-End/src/shared/components/ui/buttons/PrintPdfButton.vue`
+
+#### Funcionalidades
+
+- **Generación**: Solicita PDF al backend
+- **Descarga**: Abre PDF en nueva ventana
+- **Estados**: Maneja loading y errores
+- **Eventos**: Emite eventos de éxito/error
+
+#### Props
+
+```typescript
+interface Props {
+    caseCode: string;           // Código del caso
+    text?: string;              // Texto del botón
+    loadingText?: string;       // Texto durante carga
+}
+```
+
+#### Eventos
+
+```typescript
+interface Emits {
+    'pdf-generated': (pdfBlob: Blob) => void;
+    'error': (error: string) => void;
+}
+```
+
+#### Uso en Componentes
+
+```vue
+<PrintPdfButton
+    :case-code="caso.case_code"
+    text="Imprimir PDF"
+    @pdf-generated="handlePdfGenerated"
+    @error="handlePdfError"
+/>
+```
+
+### PdfService (Frontend)
+
+**Ubicación**: `Front-End/src/modules/pdfs/services/pdfService.ts`
+
+#### Métodos Principales
+
+```typescript
+class PdfService {
+    // Obtener PDF como Blob
+    static async getCasePdf(caseCode: string): Promise<Blob>
+    
+    // Descargar PDF directamente
+    static async downloadCasePdf(caseCode: string): Promise<void>
+}
+```
+
+## Integración con Módulos
+
+### Casos (Cases)
+
+- **Datos**: Proporciona información completa del caso
+- **Estados**: Verifica que el caso esté listo para PDF
+- **Validación**: Asegura integridad de datos
+
+### Patólogos (Pathologists)
+
+- **Firmas**: Gestiona archivos de firma digital
+- **Información**: Proporciona datos del patólogo asignado
+- **Validación**: Verifica permisos y estado activo
+
+### Aprobaciones (Approvals)
+
+- **Pruebas Complementarias**: Incluye solicitudes pendientes
+- **Estados**: Filtra por estados relevantes
+- **Integración**: Combina con informe principal
+
+### Pacientes (Patients)
+
+- **Información Demográfica**: Datos personales del paciente
+- **Entidad**: Información de la institución de salud
+- **Validación**: Verifica completitud de datos
+
+## Configuración y Requisitos
+
+### Dependencias del Sistema
+
+```bash
+# Backend
+pip install playwright
+playwright install chromium
+
+# Dependencias Python
+jinja2>=3.0.0
+playwright>=1.40.0
+```
+
+### Variables de Entorno
+
+```env
+# No requiere configuración específica
+# Utiliza configuración de base de datos existente
+```
+
+### Estructura de Archivos
+
+```
+Back-End/
+├── app/modules/cases/
+│   ├── services/pdf_service.py
+│   ├── routes/pdf_routes.py
+│   └── templates/case_report.html
+└── uploads/signatures/
+    └── *.{png,jpg,jpeg}
+
+Front-End/
+├── src/shared/components/ui/buttons/
+│   └── PrintPdfButton.vue
+└── src/modules/pdfs/services/
+    └── pdfService.ts
+```
+
+## Casos de Uso
+
+### 1. Generación de Informe Final
+
+```typescript
+// Frontend - Generar PDF para entrega
+const generateFinalReport = async (caseCode: string) => {
+    try {
+        const pdfBlob = await PdfService.getCasePdf(caseCode);
+        // Abrir en nueva ventana para revisión
+        const url = URL.createObjectURL(pdfBlob);
+        window.open(url, '_blank');
+    } catch (error) {
+        console.error('Error generando informe:', error);
+    }
+};
+```
+
+### 2. Descarga Automática
+
+```typescript
+// Frontend - Descarga directa
+const downloadReport = async (caseCode: string) => {
+    await PdfService.downloadCasePdf(caseCode);
+};
+```
+
+### 3. Integración en Modales
+
+```vue
+<!-- En componentes de detalle de caso -->
+<template>
+    <div class="case-actions">
+        <PrintPdfButton
+            :case-code="case.case_code"
+            text="Generar Informe"
+            @pdf-generated="onPdfGenerated"
+            @error="onPdfError"
+        />
+    </div>
+</template>
+```
+
+## Consideraciones Técnicas
+
+### Rendimiento
+
+- **Chromium**: Proceso pesado, optimizar para uso concurrente
+- **Memoria**: Gestionar instancias de navegador adecuadamente
+- **Cache**: Considerar cache de templates renderizados
+
+### Seguridad
+
+- **Validación**: Verificar permisos antes de generar PDF
+- **Sanitización**: Limpiar datos de entrada en templates
+- **Archivos**: Proteger acceso a firmas digitales
+
+### Escalabilidad
+
+- **Concurrencia**: Limitar procesos simultáneos de Chromium
+- **Queue**: Implementar cola para solicitudes masivas
+- **Storage**: Considerar almacenamiento temporal de PDFs
+
+### Mantenimiento
+
+- **Templates**: Versionado de plantillas HTML
+- **Firmas**: Gestión de archivos de firma
+- **Logs**: Monitoreo de errores de generación
+
+## Troubleshooting
+
+### Errores Comunes
+
+#### Playwright No Instalado
+
+```bash
+# Solución
+pip install playwright
+playwright install chromium
+```
+
+#### Firma No Encontrada
+
+```python
+# Verificar estructura de archivos
+uploads/signatures/{pathologist_id}.png
+```
+
+#### Error de Template
+
+```python
+# Verificar sintaxis Jinja2
+{{ variable_name }}  # Correcto
+{ variable_name }    # Incorrecto
+```
+
+### Debugging
+
+```python
+# Habilitar logs detallados
+print(f"DEBUG: Generando PDF para caso: {case_code}")
+print(f"DEBUG: Firma encontrada: {'SÍ' if signature else 'NO'}")
+```
+
+## Mejoras Futuras
+
+### Funcionalidades Propuestas
+
+- **Múltiples Templates**: Diferentes formatos según tipo de caso
+- **Watermarks**: Marcas de agua para borradores
+- **Firma Digital**: Integración con certificados digitales
+- **Batch Generation**: Generación masiva de PDFs
+- **Email Integration**: Envío automático por correo
+
+### Optimizaciones
+
+- **PDF Streaming**: Generación progresiva para casos grandes
+- **Template Caching**: Cache de templates compilados
+- **Image Optimization**: Compresión de firmas e imágenes
+- **Async Queue**: Cola asíncrona para procesamiento
+
+Esta documentación proporciona una guía completa para entender, usar y mantener el sistema de generación de PDFs en PathSys.

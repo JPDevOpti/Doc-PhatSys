@@ -1,0 +1,168 @@
+# Colección: Pruebas
+
+## Descripción General
+La colección `tests` define los tipos de pruebas médicas disponibles en el sistema PathSys, incluyendo información sobre códigos, descripciones, tiempos de procesamiento y costos asociados.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `name` | String | Sí | Nombre de la prueba médica |
+| `test_code` | String | Sí | Código único de la prueba |
+| `description` | String | No | Descripción detallada de la prueba |
+| `time` | Integer | Sí | Tiempo de procesamiento en horas |
+| `price` | Float | Sí | Precio de la prueba |
+| `is_active` | Boolean | Sí | Estado activo/inactivo de la prueba |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Validaciones
+
+- **name**: Longitud mínima 1, máxima 200 caracteres, no puede estar vacío
+- **test_code**: Longitud mínima 1, máxima 20 caracteres, único, se convierte a mayúsculas
+- **description**: Longitud máxima 500 caracteres (opcional)
+- **time**: Valor entero mayor a 0, máximo 1440 horas (60 días), por defecto 6 horas
+- **price**: Valor flotante mayor o igual a 0, por defecto 0
+- **is_active**: Valor booleano, por defecto `true`
+
+## Validadores Personalizados
+
+```python
+@validator('name', pre=True)
+def validate_name(cls, v):
+    if not v or not str(v).strip():
+        raise ValueError('Test name cannot be empty')
+    return str(v).strip()
+
+@validator('test_code', pre=True)
+def validate_test_code(cls, v):
+    if not v or not str(v).strip():
+        raise ValueError('Test code cannot be empty')
+    return str(v).strip().upper()
+```
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de prueba
+db.tests.createIndex({ "test_code": 1 }, { unique: true })
+
+// Índice para búsquedas por nombre
+db.tests.createIndex({ "name": "text" })
+
+// Índice para filtros por estado activo
+db.tests.createIndex({ "is_active": 1 })
+
+// Índice para ordenamiento por precio
+db.tests.createIndex({ "price": 1 })
+
+// Índice para ordenamiento por tiempo
+db.tests.createIndex({ "time": 1 })
+
+// Índice compuesto para búsquedas activas
+db.tests.createIndex({ 
+  "is_active": 1, 
+  "name": 1 
+})
+```
+
+## Esquemas de Operación
+
+### TestCreate
+```python
+class TestCreate(TestBase):
+    pass  # Hereda todos los campos requeridos
+```
+
+### TestUpdate
+```python
+class TestUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    test_code: Optional[str] = Field(None, min_length=1, max_length=20)
+    description: Optional[str] = Field(None, max_length=500)
+    time: Optional[int] = Field(None, gt=0, le=1440)
+    price: Optional[float] = Field(None, ge=0)
+    is_active: Optional[bool] = None
+```
+
+### TestResponse
+```python
+class TestResponse(TestBase):
+    id: str = Field(...)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+```
+
+### TestSearch
+```python
+class TestSearch(BaseModel):
+    query: Optional[str] = None
+    skip: int = Field(0, ge=0)
+    limit: int = Field(10, ge=1, le=100)
+```
+
+## Tipos de Pruebas Comunes
+
+### Categorías Principales
+- **Histopatología**: Análisis de tejidos
+- **Citología**: Análisis de células
+- **Inmunohistoquímica**: Marcadores específicos
+- **Biología Molecular**: Análisis genético
+- **Patología Forense**: Análisis médico-legal
+
+### Ejemplos de Códigos
+- `HIST001`: Biopsia de rutina
+- `CITO001`: Citología cervical
+- `IHQ001`: Panel de inmunohistoquímica
+- `MOLEC001`: PCR específico
+- `FOREN001`: Autopsia médico-legal
+
+## Relaciones
+
+- **Casos**: Las pruebas se asocian a casos específicos a través de `sample_tests`
+- **Muestras**: Cada muestra puede incluir múltiples pruebas
+- **Aprobaciones**: Algunas pruebas pueden requerir aprobación previa
+- **Facturación**: Los precios se utilizan para cálculos de facturación
+
+## Casos de Uso Principales
+
+1. **Catálogo de Pruebas**: Mantenimiento del catálogo de servicios
+2. **Asignación a Casos**: Selección de pruebas para casos específicos
+3. **Cálculo de Costos**: Determinación de precios por caso
+4. **Planificación de Tiempos**: Estimación de tiempos de entrega
+5. **Reportes de Servicios**: Análisis de pruebas más solicitadas
+6. **Gestión de Inventario**: Control de reactivos y materiales
+
+## Consideraciones de Tiempo
+
+- **Tiempo Estándar**: 6 horas para pruebas de rutina
+- **Pruebas Urgentes**: 2-4 horas para casos prioritarios
+- **Pruebas Complejas**: 24-72 horas para análisis especializados
+- **Pruebas Moleculares**: 48-120 horas para análisis genéticos
+
+## Consideraciones de Precio
+
+- Los precios deben actualizarse según tarifarios institucionales
+- Considerar descuentos por volumen para entidades
+- Mantener historial de cambios de precios
+- Validar precios antes de facturación
+- Implementar alertas para precios fuera de rango
+
+## Consideraciones de Rendimiento
+
+- Implementar cache para pruebas activas frecuentemente consultadas
+- Optimizar consultas de búsqueda por código y nombre
+- Mantener índices actualizados para filtros por estado y precio
+- Considerar desnormalización en colecciones de casos
+- Monitorear el uso de pruebas para optimización del catálogo
+
+## Consideraciones de Seguridad
+
+- Validar permisos antes de modificar pruebas
+- Auditar cambios en precios y tiempos
+- Controlar acceso a información de costos
+- Implementar validación de códigos únicos
+- Mantener integridad referencial con casos activos

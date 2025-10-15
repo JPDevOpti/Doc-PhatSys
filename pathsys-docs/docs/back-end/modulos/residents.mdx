@@ -1,5 +1,572 @@
 ---
 id: mod-residents
-title: Residents
-sidebar_position: 7
+title: Residentes
+sidebar_position: 5
 ---
+
+# Módulo de Residentes
+
+El módulo de residentes gestiona la información y operaciones relacionadas con los médicos residentes del sistema PathSys, incluyendo su registro, autenticación, y gestión de perfiles profesionales.
+
+## Objetivo
+
+Proporcionar funcionalidad completa para:
+- Gestión de perfiles de residentes médicos
+- Integración con sistema de usuarios y autenticación
+- Control de acceso y permisos específicos
+- Validación de credenciales médicas
+- Búsqueda y filtrado avanzado de residentes
+
+## Estructura del Módulo
+
+```
+residents/
+├── routes/
+│   └── resident_routes.py        # Endpoints de la API
+├── services/
+│   └── resident_service.py       # Lógica de negocio
+├── repositories/
+│   └── resident_repository.py    # Acceso a datos
+├── schemas/
+│   └── resident.py               # Modelos de datos
+└── models/
+    └── __init__.py               # Modelos de base de datos
+```
+
+## Endpoints de la API
+
+### Crear Residente
+
+**POST** `/api/v1/residents/`
+
+Crea un nuevo residente en el sistema y su cuenta de usuario asociada.
+
+#### Request Body
+```json
+{
+  "resident_code": "RES001",
+  "resident_name": "Dr. Juan Pérez",
+  "initials": "JP",
+  "resident_email": "juan.perez@hospital.com",
+  "medical_license": "ML123456",
+  "password": "password123",
+  "is_active": true,
+  "observations": "Residente de primer año"
+}
+```
+
+#### Response (201)
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "resident_code": "RES001",
+  "resident_name": "Dr. Juan Pérez",
+  "initials": "JP",
+  "resident_email": "juan.perez@hospital.com",
+  "medical_license": "ML123456",
+  "is_active": true,
+  "observations": "Residente de primer año",
+  "created_at": "2025-01-20T10:30:00Z",
+  "updated_at": "2025-01-20T10:30:00Z"
+}
+```
+
+#### Códigos de Estado
+- **201**: Residente creado exitosamente
+- **400**: Datos de entrada inválidos
+- **409**: Código, email o licencia médica ya existe
+- **500**: Error interno del servidor
+
+### Listar Residentes
+
+**GET** `/api/v1/residents/`
+
+Obtiene una lista paginada de residentes activos.
+
+#### Parámetros de Query
+- **skip** (opcional): Número de registros a omitir (default: 0)
+- **limit** (opcional): Número máximo de registros (default: 10, max: 100)
+
+#### Response (200)
+```json
+[
+  {
+    "id": "507f1f77bcf86cd799439011",
+    "resident_code": "RES001",
+    "resident_name": "Dr. Juan Pérez",
+    "initials": "JP",
+    "resident_email": "juan.perez@hospital.com",
+    "medical_license": "ML123456",
+    "is_active": true,
+    "observations": "Residente de primer año",
+    "created_at": "2025-01-20T10:30:00Z",
+    "updated_at": "2025-01-20T10:30:00Z"
+  }
+]
+```
+
+### Buscar Residentes
+
+**GET** `/api/v1/residents/search`
+
+Realiza búsqueda avanzada de residentes con múltiples filtros.
+
+#### Parámetros de Query
+- **q** (opcional): Término de búsqueda general
+- **resident_name** (opcional): Filtrar por nombre
+- **resident_code** (opcional): Filtrar por código
+- **resident_email** (opcional): Filtrar por email
+- **medical_license** (opcional): Filtrar por licencia médica
+- **is_active** (opcional): Filtrar por estado activo
+- **skip** (opcional): Número de registros a omitir (default: 0)
+- **limit** (opcional): Número máximo de registros (default: 100, max: 1000)
+
+#### Ejemplos de Uso
+```bash
+# Búsqueda general
+GET /api/v1/residents/search?q=Juan
+
+# Búsqueda por email
+GET /api/v1/residents/search?resident_email=juan.perez@hospital.com
+
+# Filtrar solo residentes activos
+GET /api/v1/residents/search?is_active=true
+
+# Búsqueda combinada
+GET /api/v1/residents/search?resident_name=Juan&is_active=true&limit=50
+```
+
+### Obtener Residente por Código
+
+**GET** `/api/v1/residents/{resident_code}`
+
+Obtiene la información detallada de un residente específico.
+
+#### Parámetros
+- **resident_code** (path): Código único del residente
+
+#### Response (200)
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "resident_code": "RES001",
+  "resident_name": "Dr. Juan Pérez",
+  "initials": "JP",
+  "resident_email": "juan.perez@hospital.com",
+  "medical_license": "ML123456",
+  "is_active": true,
+  "observations": "Residente de primer año",
+  "created_at": "2025-01-20T10:30:00Z",
+  "updated_at": "2025-01-20T10:30:00Z"
+}
+```
+
+#### Códigos de Estado
+- **200**: Residente encontrado
+- **404**: Residente no encontrado
+- **500**: Error interno del servidor
+
+### Actualizar Residente
+
+**PUT** `/api/v1/residents/{resident_code}`
+
+Actualiza la información de un residente existente.
+
+#### Parámetros
+- **resident_code** (path): Código único del residente
+
+#### Request Body
+```json
+{
+  "resident_name": "Dr. Juan Carlos Pérez",
+  "resident_email": "juan.carlos@hospital.com",
+  "is_active": false,
+  "observations": "Residente de segundo año - Rotación externa"
+}
+```
+
+#### Response (200)
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "resident_code": "RES001",
+  "resident_name": "Dr. Juan Carlos Pérez",
+  "initials": "JP",
+  "resident_email": "juan.carlos@hospital.com",
+  "medical_license": "ML123456",
+  "is_active": false,
+  "observations": "Residente de segundo año - Rotación externa",
+  "created_at": "2025-01-20T10:30:00Z",
+  "updated_at": "2025-01-20T15:45:00Z"
+}
+```
+
+#### Códigos de Estado
+- **200**: Residente actualizado exitosamente
+- **400**: Datos de entrada inválidos
+- **404**: Residente no encontrado
+- **409**: Email o licencia médica ya existe
+- **500**: Error interno del servidor
+
+### Eliminar Residente
+
+**DELETE** `/api/v1/residents/{resident_code}`
+
+Elimina un residente del sistema.
+
+#### Parámetros
+- **resident_code** (path): Código único del residente
+
+#### Response (200)
+```json
+{
+  "deleted": true,
+  "resident_code": "RES001"
+}
+```
+
+#### Códigos de Estado
+- **200**: Residente eliminado exitosamente
+- **404**: Residente no encontrado
+- **500**: Error interno del servidor
+
+## Esquemas de Datos
+
+### ResidentBase
+Esquema base que define los campos comunes de un residente.
+
+```python
+class ResidentBase(BaseModel):
+    resident_code: str          # Código único (max 11 caracteres)
+    resident_name: str          # Nombre completo (max 100 caracteres)
+    initials: Optional[str]     # Iniciales (max 10 caracteres)
+    resident_email: EmailStr    # Email único válido
+    medical_license: str        # Licencia médica única (max 50 caracteres)
+    is_active: bool            # Estado activo/inactivo (default: True)
+    observations: Optional[str] # Notas adicionales (max 500 caracteres)
+```
+
+### ResidentCreate
+Esquema para crear un nuevo residente, extiende ResidentBase.
+
+```python
+class ResidentCreate(ResidentBase):
+    password: str  # Contraseña (min 6, max 128 caracteres)
+```
+
+### ResidentUpdate
+Esquema para actualizar un residente existente, todos los campos son opcionales.
+
+```python
+class ResidentUpdate(BaseModel):
+    resident_name: Optional[str]
+    initials: Optional[str]
+    resident_email: Optional[EmailStr]
+    medical_license: Optional[str]
+    is_active: Optional[bool]
+    observations: Optional[str]
+    password: Optional[str]  # Nueva contraseña
+```
+
+### ResidentResponse
+Esquema de respuesta que incluye metadatos del sistema.
+
+```python
+class ResidentResponse(ResidentBase):
+    id: str                    # ID único del documento
+    created_at: datetime       # Fecha de creación
+    updated_at: datetime       # Fecha de última actualización
+```
+
+### ResidentSearch
+Esquema para parámetros de búsqueda avanzada.
+
+```python
+class ResidentSearch(BaseModel):
+    q: Optional[str]                    # Búsqueda general
+    resident_name: Optional[str]        # Filtro por nombre
+    resident_code: Optional[str]        # Filtro por código
+    resident_email: Optional[str]       # Filtro por email
+    medical_license: Optional[str]      # Filtro por licencia
+    is_active: Optional[bool]          # Filtro por estado
+```
+
+## Lógica de Negocio
+
+### ResidentService
+
+#### Validaciones de Creación
+1. **Unicidad de código**: Verifica que el `resident_code` no exista
+2. **Unicidad de email**: Valida que el `resident_email` sea único
+3. **Unicidad de licencia**: Confirma que la `medical_license` no esté en uso
+4. **Creación de usuario**: Genera cuenta de usuario asociada
+5. **Rollback automático**: Si falla la creación del usuario, elimina el residente
+
+#### Validaciones de Actualización
+1. **Existencia del residente**: Verifica que el residente existe
+2. **Unicidad de email**: Solo valida si el email cambió
+3. **Unicidad de licencia**: Solo valida si la licencia cambió
+4. **Sincronización de usuario**: Actualiza la cuenta de usuario asociada
+
+#### Métodos Principales
+
+**`create_resident(payload: ResidentCreate) -> ResidentResponse`**
+- Valida unicidad de código, email y licencia médica
+- Crea el residente en la colección `residents`
+- Crea cuenta de usuario en la colección `users`
+- Implementa rollback en caso de error
+
+**`get_resident(resident_code: str) -> ResidentResponse`**
+- Busca residente por código único
+- Lanza `NotFoundError` si no existe
+
+**`list_residents(skip: int, limit: int) -> List[ResidentResponse]`**
+- Lista residentes activos con paginación
+- Aplica límites de consulta para performance
+
+**`search_residents(search_params: ResidentSearch, skip: int, limit: int) -> List[ResidentResponse]`**
+- Búsqueda avanzada con múltiples filtros
+- Soporte para búsqueda general con operador `$or`
+- Filtros específicos por campo
+
+**`update_resident(resident_code: str, payload: ResidentUpdate) -> ResidentResponse`**
+- Valida existencia del residente
+- Verifica unicidad de campos modificados
+- Sincroniza cambios con cuenta de usuario
+- Actualización parcial de campos
+
+**`delete_resident(resident_code: str) -> Dict[str, Any]`**
+- Elimina residente por código
+- Retorna confirmación de eliminación
+
+## Integración con Gestión de Usuarios
+
+### UserManagementService
+
+El módulo de residentes se integra estrechamente con el servicio de gestión de usuarios:
+
+#### Creación de Usuario
+```python
+user_data = await self.user_service.create_user_for_resident(
+    name=payload.resident_name,
+    email=payload.resident_email,
+    password=payload.password,
+    resident_code=payload.resident_code,
+    is_active=payload.is_active
+)
+```
+
+#### Actualización de Usuario
+```python
+user_data = await self.user_service.update_user_for_resident(
+    resident_code=resident_code,
+    name=payload.resident_name,
+    email=payload.resident_email,
+    password=payload.password,
+    is_active=payload.is_active
+)
+```
+
+### Sincronización de Datos
+- **Nombre**: Se sincroniza entre residente y usuario
+- **Email**: Debe ser único en ambas colecciones
+- **Estado activo**: Se mantiene consistente
+- **Contraseña**: Se gestiona en la colección de usuarios
+
+## Repositorio de Datos
+
+### ResidentRepository
+
+#### Métodos de Consulta
+
+**`get_by_resident_code(resident_code: str) -> Optional[dict]`**
+- Busca residente por código único
+- Retorna `None` si no existe
+
+**`get_by_email(email: str) -> Optional[dict]`**
+- Busca residente por email
+- Utilizado para validar unicidad
+
+**`get_by_medical_license(license: str) -> Optional[dict]`**
+- Busca residente por licencia médica
+- Valida unicidad de credenciales
+
+**`list_active(skip: int, limit: int) -> List[dict]`**
+- Lista residentes con `is_active: true`
+- Implementa paginación eficiente
+
+**`search(search_params: ResidentSearch, skip: int, limit: int) -> List[dict]`**
+- Búsqueda avanzada con filtros múltiples
+- Soporte para regex en campos de texto
+- Optimizada para performance
+
+#### Operaciones CRUD
+
+**`create(payload: ResidentCreate) -> dict`**
+- Inserta nuevo residente
+- Genera timestamps automáticamente
+- Maneja errores de duplicación
+
+**`update_by_resident_code(resident_code: str, update_data: dict) -> dict`**
+- Actualización por código
+- Actualiza `updated_at` automáticamente
+- Retorna documento actualizado
+
+**`delete_by_resident_code(resident_code: str) -> bool`**
+- Eliminación por código
+- Retorna éxito/fallo de operación
+
+## Búsqueda y Filtrado
+
+### Búsqueda General (parámetro `q`)
+Utiliza operador `$or` para buscar en múltiples campos:
+```python
+filter_dict["$or"] = [
+    {"resident_name": {"$regex": search_params.q, "$options": "i"}},
+    {"resident_code": {"$regex": search_params.q, "$options": "i"}},
+    {"resident_email": {"$regex": search_params.q, "$options": "i"}},
+    {"medical_license": {"$regex": search_params.q, "$options": "i"}}
+]
+```
+
+### Filtros Específicos
+- **Nombre**: Búsqueda insensible a mayúsculas con regex
+- **Código**: Coincidencia exacta
+- **Email**: Búsqueda insensible a mayúsculas con regex
+- **Licencia médica**: Búsqueda insensible a mayúsculas con regex
+- **Estado activo**: Filtro booleano exacto
+
+### Optimizaciones
+- Índices en campos de búsqueda frecuente
+- Límites de resultados para prevenir sobrecarga
+- Paginación eficiente con `skip` y `limit`
+
+## Validaciones y Controles
+
+### Validaciones de Entrada
+- **Código de residente**: Máximo 11 caracteres, único
+- **Nombre**: Máximo 100 caracteres, requerido
+- **Iniciales**: Máximo 10 caracteres, opcional
+- **Email**: Formato válido, único
+- **Licencia médica**: Máximo 50 caracteres, única
+- **Contraseña**: Mínimo 6, máximo 128 caracteres
+- **Observaciones**: Máximo 500 caracteres, opcional
+
+### Control de Errores
+- **NotFoundError**: Residente no encontrado
+- **ConflictError**: Violación de unicidad
+- **BadRequestError**: Datos de entrada inválidos
+- **HTTPException**: Errores HTTP apropiados
+
+### Manejo de Transacciones
+- Rollback automático en creación fallida
+- Consistencia entre colecciones `residents` y `users`
+- Validación previa a operaciones críticas
+
+## Consideraciones de Seguridad
+
+### Protección de Datos
+- Contraseñas hasheadas en colección `users`
+- No exposición de contraseñas en respuestas
+- Validación de formato de email
+
+### Control de Acceso
+- Validación de permisos por endpoint
+- Restricción de operaciones por rol
+- Auditoría de cambios críticos
+
+### Validación de Credenciales
+- Verificación de licencias médicas únicas
+- Validación de formato de códigos
+- Control de estados activos/inactivos
+
+## Configuración y Optimización
+
+### Índices de Base de Datos
+```javascript
+// Índices recomendados para la colección residents
+db.residents.createIndex({"resident_code": 1}, {unique: true})
+db.residents.createIndex({"resident_email": 1}, {unique: true})
+db.residents.createIndex({"medical_license": 1}, {unique: true})
+db.residents.createIndex({"is_active": 1})
+db.residents.createIndex({"resident_name": "text"})
+```
+
+### Variables de Entorno
+```bash
+# Configuración de residentes
+RESIDENTS_DEFAULT_LIMIT=10
+RESIDENTS_MAX_LIMIT=100
+RESIDENTS_SEARCH_MAX_LIMIT=1000
+
+# Configuración de validación
+RESIDENT_CODE_MAX_LENGTH=11
+RESIDENT_NAME_MAX_LENGTH=100
+MEDICAL_LICENSE_MAX_LENGTH=50
+```
+
+### Optimizaciones de Performance
+- Cache de consultas frecuentes
+- Paginación eficiente
+- Índices apropiados para búsquedas
+- Límites de resultados configurables
+
+## Integración con Frontend
+
+### Servicios de API
+El frontend utiliza `ResidentApiService` para interactuar con el backend:
+
+```typescript
+// Obtener residente por código
+const resident = await ResidentApiService.getByCode("RES001");
+
+// Buscar por email
+const resident = await ResidentApiService.getByEmail("juan@hospital.com");
+
+// Actualizar residente
+const updated = await ResidentApiService.update("RES001", updateData);
+```
+
+### Tipos de Datos
+```typescript
+interface ResidentResponse {
+  id: string
+  resident_code: string
+  resident_name: string
+  initials?: string
+  resident_email: string
+  medical_license: string
+  is_active: boolean
+  observations?: string
+  created_at: string
+  updated_at: string
+}
+```
+
+## Casos de Uso Comunes
+
+### Registro de Nuevo Residente
+1. Validar datos de entrada
+2. Verificar unicidad de código, email y licencia
+3. Crear residente en base de datos
+4. Crear cuenta de usuario asociada
+5. Enviar credenciales de acceso
+
+### Búsqueda de Residentes
+1. Aplicar filtros de búsqueda
+2. Ejecutar consulta optimizada
+3. Paginar resultados
+4. Retornar lista filtrada
+
+### Actualización de Perfil
+1. Validar existencia del residente
+2. Verificar unicidad de campos modificados
+3. Actualizar datos del residente
+4. Sincronizar con cuenta de usuario
+5. Confirmar cambios
+
+### Gestión de Estados
+1. Activar/desactivar residente
+2. Sincronizar estado con usuario
+3. Actualizar permisos de acceso
+4. Notificar cambios relevantes

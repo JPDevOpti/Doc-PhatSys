@@ -1,0 +1,88 @@
+# Colección: Pacientes
+
+## Descripción General
+La colección `patients` almacena la información completa de los pacientes del sistema PathSys, incluyendo datos demográficos, información de contacto, entidad asociada y tipo de atención.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `identification` | String | Sí | Número de identificación del paciente |
+| `patient_name` | String | Sí | Nombre completo del paciente |
+| `birth_date` | Date | Sí | Fecha de nacimiento |
+| `gender` | String | Sí | Género del paciente |
+| `location` | Object | No | Información de ubicación |
+| `entity_info` | Object | No | Información de la entidad asociada |
+| `care_type` | String | No | Tipo de atención médica |
+| `observations` | String | No | Observaciones adicionales |
+| `created_at` | DateTime | Sí | Fecha de creación del registro |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+### Estructura de Subdocumentos
+
+#### LocationInfo
+```json
+{
+  "address": "string",
+  "city": "string", 
+  "department": "string",
+  "phone": "string"
+}
+```
+
+#### EntityInfo
+```json
+{
+  "entity_id": "string",
+  "entity_name": "string",
+  "entity_code": "string"
+}
+```
+
+## Validaciones
+
+- **identification**: Único en el sistema, no puede estar vacío
+- **patient_name**: Longitud mínima 1, máxima 200 caracteres
+- **birth_date**: Debe ser una fecha válida
+- **gender**: Valores permitidos según enumeración del sistema
+- **phone**: Formato de número telefónico válido (cuando se proporciona)
+
+## Índices Recomendados
+
+```javascript
+// Índice único para identificación
+db.patients.createIndex({ "identification": 1 }, { unique: true })
+
+// Índice compuesto para búsquedas por nombre
+db.patients.createIndex({ "patient_name": "text" })
+
+// Índice para búsquedas por entidad
+db.patients.createIndex({ "entity_info.entity_id": 1 })
+
+// Índice para filtros por fecha de nacimiento
+db.patients.createIndex({ "birth_date": 1 })
+```
+
+## Relaciones
+
+- **Casos**: Un paciente puede tener múltiples casos médicos
+- **Entidades**: Cada paciente está asociado a una entidad médica
+- **Pruebas**: Los pacientes pueden tener múltiples pruebas a través de sus casos
+
+## Casos de Uso Principales
+
+1. **Registro de Pacientes**: Creación de nuevos registros de pacientes
+2. **Búsqueda de Pacientes**: Localización por identificación, nombre o entidad
+3. **Actualización de Datos**: Modificación de información demográfica
+4. **Gestión de Entidades**: Asociación y cambio de entidades médicas
+5. **Reportes Demográficos**: Análisis estadístico por edad, género, ubicación
+
+## Consideraciones de Rendimiento
+
+- La identificación debe estar indexada para búsquedas rápidas
+- Las búsquedas por nombre se benefician de índices de texto
+- Considerar particionamiento por entidad para grandes volúmenes
+- Implementar cache para pacientes frecuentemente consultados

@@ -3,3 +3,559 @@ id: mod-approvals
 title: Aprobaciones
 sidebar_position: 10
 ---
+
+# Módulo de Aprobaciones
+
+## Objetivo
+
+El módulo de aprobaciones gestiona el flujo de solicitudes de pruebas complementarias para casos de patología en PathSys. Permite crear, gestionar y aprobar solicitudes de pruebas adicionales que requieren autorización especial, facilitando el control de calidad y la gestión de recursos del laboratorio. Cuando una solicitud es aprobada, automáticamente genera un nuevo caso con las pruebas complementarias solicitadas.
+
+## Estructura de Archivos
+
+```
+app/modules/approvals/
+├── __init__.py                          # Comentario del módulo
+├── models/
+│   ├── __init__.py                     # Comentario de modelos
+│   └── approval_request.py             # Modelo principal de solicitudes
+├── routes/
+│   ├── __init__.py                     # Comentario de rutas
+│   └── approval_routes.py              # Endpoints REST API
+├── services/
+│   ├── __init__.py                     # Exports de servicios
+│   └── approval_service.py             # Lógica de negocio
+├── repositories/
+│   ├── __init__.py                     # Comentario de repositorios
+│   ├── approval_repository.py          # Operaciones de base de datos
+│   └── consecutive_repository.py       # Generación de códigos consecutivos
+└── schemas/
+    ├── __init__.py                     # Exports de esquemas
+    └── approval.py                     # Esquemas de validación
+```
+
+## Endpoints API
+
+### Crear Solicitud de Aprobación
+- **POST** `/approvals/`
+- **Descripción**: Crea una nueva solicitud de aprobación para pruebas complementarias
+- **Request Body**: `ApprovalRequestCreate`
+- **Response**: `ApprovalRequestResponse` (201 Created)
+- **Autenticación**: Opcional (permite tokens expirados)
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 404: Caso original no encontrado
+  - 409: Ya existe solicitud para este caso
+  - 500: Error interno del servidor
+
+**Ejemplo de uso**:
+```json
+{
+    "original_case_code": "2025-00001",
+    "complementary_tests": [
+        {
+            "code": "IHQ001",
+            "name": "Inmunohistoquímica para Ki-67",
+            "quantity": 1
+        },
+        {
+            "code": "PCR002",
+            "name": "PCR para HPV",
+            "quantity": 2
+        }
+    ],
+    "reason": "Necesario para confirmar diagnóstico diferencial y determinar pronóstico"
+}
+```
+
+### Obtener Estadísticas de Aprobaciones
+- **GET** `/approvals/stats`
+- **Descripción**: Obtiene estadísticas generales de solicitudes de aprobación
+- **Response**: `ApprovalStats`
+- **Autenticación**: Requerida
+
+**Ejemplo de respuesta**:
+```json
+{
+    "total_requests": 150,
+    "requests_made": 45,
+    "pending_approval": 12,
+    "approved": 85,
+    "rejected": 8
+}
+```
+
+### Obtener Solicitud por Código
+- **GET** `/approvals/{approval_code}`
+- **Descripción**: Obtiene una solicitud de aprobación específica por su código
+- **Path Parameters**:
+  - `approval_code`: Código único de la solicitud (formato: AP-YYYY-NNN)
+- **Response**: `ApprovalRequestResponse`
+- **Errores**:
+  - 404: Solicitud de aprobación no encontrada
+  - 500: Error interno del servidor
+
+**Ejemplo**: `GET /approvals/AP-2025-001`
+
+### Buscar Solicitudes de Aprobación
+- **POST** `/approvals/search`
+- **Descripción**: Busca solicitudes de aprobación con múltiples criterios de filtrado
+- **Request Body**: `ApprovalRequestSearch`
+- **Query Parameters**:
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 50, max: 100): Número máximo de registros
+- **Response**: Objeto con `data`, `total`, `skip`, `limit`
+
+**Ejemplo de uso**:
+```json
+{
+    "original_case_code": "2025-00001",
+    "approval_state": "pending_approval",
+    "request_date_from": "2025-01-01T00:00:00Z",
+    "request_date_to": "2025-01-31T23:59:59Z"
+}
+```
+
+### Obtener Solicitudes por Estado
+- **GET** `/approvals/state/{state}`
+- **Descripción**: Obtiene solicitudes filtradas por estado específico
+- **Path Parameters**:
+  - `state`: Estado de la solicitud (`request_made`, `pending_approval`, `approved`, `rejected`)
+- **Query Parameters**:
+  - `limit` (default: 50, max: 100): Número máximo de registros
+- **Response**: `List[ApprovalRequestResponse]`
+
+**Ejemplo**: `GET /approvals/state/pending_approval?limit=20`
+
+### Marcar Solicitud en Gestión
+- **PATCH** `/approvals/{approval_code}/manage`
+- **Descripción**: Cambia el estado de la solicitud a "pending_approval" (en gestión)
+- **Path Parameters**:
+  - `approval_code`: Código único de la solicitud
+- **Response**: `ApprovalRequestResponse`
+- **Autenticación**: Requerida
+- **Errores**:
+  - 404: Solicitud de aprobación no encontrada
+
+### Aprobar Solicitud
+- **PATCH** `/approvals/{approval_code}/approve`
+- **Descripción**: Aprueba la solicitud y crea automáticamente un nuevo caso con las pruebas complementarias
+- **Path Parameters**:
+  - `approval_code`: Código único de la solicitud
+- **Response**: Objeto con información de la aprobación y el nuevo caso creado
+- **Autenticación**: Requerida
+- **Errores**:
+  - 404: Solicitud de aprobación no encontrada
+
+**Ejemplo de respuesta**:
+```json
+{
+    "success": true,
+    "message": "Solicitud aprobada y nuevo caso creado exitosamente",
+    "data": {
+        "approval": { /* ApprovalRequestResponse */ },
+        "new_case": { /* Información del nuevo caso creado */ }
+    }
+}
+```
+
+### Rechazar Solicitud
+- **PATCH** `/approvals/{approval_code}/reject`
+- **Descripción**: Rechaza la solicitud de aprobación
+- **Path Parameters**:
+  - `approval_code`: Código único de la solicitud
+- **Response**: `ApprovalRequestResponse`
+- **Autenticación**: Requerida
+- **Errores**:
+  - 404: Solicitud de aprobación no encontrada
+
+### Actualizar Solicitud de Aprobación
+- **PUT** `/approvals/{approval_code}`
+- **Descripción**: Actualiza los datos de una solicitud de aprobación existente
+- **Path Parameters**:
+  - `approval_code`: Código único de la solicitud
+- **Request Body**: `ApprovalRequestUpdate`
+- **Response**: `ApprovalRequestResponse`
+- **Autenticación**: Requerida
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 404: Solicitud de aprobación no encontrada
+
+### Actualizar Pruebas Complementarias
+- **PATCH** `/approvals/{approval_code}/complementary-tests`
+- **Descripción**: Actualiza específicamente las pruebas complementarias de una solicitud
+- **Path Parameters**:
+  - `approval_code`: Código único de la solicitud
+- **Request Body**: Lista de `ComplementaryTestInfo`
+- **Response**: Objeto con información de éxito y datos actualizados
+- **Autenticación**: Requerida
+
+### Eliminar Solicitud de Aprobación
+- **DELETE** `/approvals/{approval_code}`
+- **Descripción**: Elimina una solicitud de aprobación del sistema (eliminación física)
+- **Path Parameters**:
+  - `approval_code`: Código único de la solicitud
+- **Response**: `{"success": boolean, "message": string}`
+- **Autenticación**: Requerida
+- **Errores**:
+  - 404: Solicitud de aprobación no encontrada
+
+## Esquemas de Datos
+
+### ApprovalRequestCreate
+Esquema para crear solicitudes de aprobación:
+```python
+{
+    "original_case_code": "string",              # Código del caso original (YYYY-NNNNN)
+    "complementary_tests": [                     # Lista de pruebas complementarias
+        {
+            "code": "string",                    # Código de la prueba
+            "name": "string",                    # Nombre de la prueba
+            "quantity": "integer"                # Cantidad (1-20)
+        }
+    ],
+    "reason": "string"                           # Motivo de la solicitud (max 1000 chars)
+}
+```
+
+### ApprovalRequestUpdate
+Esquema para actualizar solicitudes de aprobación:
+```python
+{
+    "approval_state": "ApprovalStateEnum",       # Estado opcional
+    "complementary_tests": [                     # Lista opcional de pruebas
+        {
+            "code": "string",
+            "name": "string", 
+            "quantity": "integer"
+        }
+    ]
+}
+```
+
+### ApprovalRequestResponse
+Esquema de respuesta para solicitudes de aprobación:
+```python
+{
+    "id": "string",                              # ID único generado
+    "approval_code": "string",                   # Código único (AP-YYYY-NNN)
+    "original_case_code": "string",              # Código del caso original
+    "approval_state": "ApprovalStateEnum",       # Estado actual
+    "complementary_tests": [                     # Pruebas complementarias
+        {
+            "code": "string",
+            "name": "string",
+            "quantity": "integer"
+        }
+    ],
+    "approval_info": {                           # Información del proceso
+        "request_date": "datetime",              # Fecha de solicitud
+        "reason": "string",                      # Motivo de la solicitud
+        "assigned_pathologist": {                # Patólogo asignado (opcional)
+            "id": "string",
+            "name": "string"
+        }
+    },
+    "created_at": "datetime",                    # Fecha de creación
+    "updated_at": "datetime"                     # Fecha de última actualización
+}
+```
+
+### ApprovalRequestSearch
+Esquema para búsqueda de solicitudes:
+```python
+{
+    "original_case_code": "string",              # Filtro por caso original (opcional)
+    "approval_state": "ApprovalStateEnum",       # Filtro por estado (opcional)
+    "request_date_from": "datetime",             # Fecha desde (opcional)
+    "request_date_to": "datetime"                # Fecha hasta (opcional)
+}
+```
+
+### ApprovalStats
+Esquema para estadísticas de aprobaciones:
+```python
+{
+    "total_requests": "integer",                 # Total de solicitudes
+    "requests_made": "integer",                  # Solicitudes realizadas
+    "pending_approval": "integer",               # Pendientes de aprobación
+    "approved": "integer",                       # Aprobadas
+    "rejected": "integer"                        # Rechazadas
+}
+```
+
+### ComplementaryTestInfo
+Esquema para información de pruebas complementarias:
+```python
+{
+    "code": "string",                            # Código de la prueba
+    "name": "string",                            # Nombre de la prueba
+    "quantity": "integer"                        # Cantidad (1-20)
+}
+```
+
+### ApprovalInfo
+Esquema para información del proceso de aprobación:
+```python
+{
+    "request_date": "datetime",                  # Fecha de solicitud
+    "reason": "string",                          # Motivo (max 1000 chars)
+    "assigned_pathologist": {                    # Patólogo asignado (opcional)
+        "id": "string",
+        "name": "string"
+    }
+}
+```
+
+## Estados del Flujo de Aprobación (ApprovalStateEnum)
+
+1. **`request_made`**: Solicitud creada, esperando revisión
+2. **`pending_approval`**: En proceso de revisión/gestión
+3. **`approved`**: Solicitud aprobada, nuevo caso creado
+4. **`rejected`**: Solicitud rechazada
+
+## Lógica de Negocio (ApprovalService)
+
+### Funcionalidades Principales
+
+1. **Creación de Solicitudes**:
+   - Generación automática de código único (AP-YYYY-NNN)
+   - Validación de existencia del caso original
+   - Verificación de unicidad por caso original
+   - Obtención automática de información del patólogo asignado
+   - Estado inicial: `request_made`
+
+2. **Gestión de Estados**:
+   - Transición controlada entre estados del flujo
+   - Validación de estados válidos para cada operación
+   - Actualización automática de timestamps
+
+3. **Aprobación Automática de Casos**:
+   - Creación automática de nuevo caso al aprobar
+   - Generación de código de caso consecutivo
+   - Transferencia de información del caso original
+   - Configuración de pruebas complementarias como muestras
+   - Asignación del mismo patólogo del caso original
+
+4. **Búsqueda y Filtrado**:
+   - Búsqueda por código de caso original
+   - Filtrado por estado de aprobación
+   - Filtrado por rango de fechas
+   - Paginación configurable
+
+5. **Estadísticas**:
+   - Conteo por estados de aprobación
+   - Métricas de rendimiento del flujo
+   - Manejo de errores con estadísticas vacías
+
+### Integración con Otros Módulos
+
+El servicio de aprobaciones se integra con:
+- **Módulo de Casos**: Validación de casos originales y creación de nuevos casos
+- **Módulo de Patólogos**: Obtención de información del patólogo asignado
+- **Módulo de Pruebas**: Validación de códigos de pruebas complementarias
+- **Sistema de Consecutivos**: Generación de códigos únicos
+
+## Operaciones de Repositorio (ApprovalRepository)
+
+### Métodos Principales
+
+- `create(approval)`: Inserta nueva solicitud con timestamps automáticos
+- `get_by_approval_code(code)`: Busca solicitud por código único
+- `search(search_params, skip, limit)`: Búsqueda avanzada con filtros
+- `count_approvals(search_params)`: Cuenta solicitudes que coinciden con filtros
+- `get_approvals_by_state(state, limit)`: Obtiene solicitudes por estado
+- `update_state(code, state)`: Actualiza estado de solicitud
+- `update_by_approval_code(code, data)`: Actualiza datos de solicitud
+- `delete_by_approval_code(code)`: Elimina solicitud por código
+
+### Características Técnicas
+
+- **Índices Únicos**: Código de aprobación y código de caso original
+- **Búsqueda Optimizada**: Índices en estado y fecha de creación
+- **Conversión de ObjectId**: Transformación automática de `_id` a `id` string
+- **Timestamps Automáticos**: Fechas de creación y actualización
+- **Paginación Eficiente**: Uso de `skip` y `limit`
+
+## Generación de Códigos Consecutivos (ApprovalConsecutiveRepository)
+
+### Funcionalidades
+
+- **Códigos Únicos**: Formato AP-YYYY-NNN (ejemplo: AP-2025-001)
+- **Consecutivos por Año**: Numeración independiente por año
+- **Operaciones Atómicas**: Incremento seguro con `find_one_and_update`
+- **Previsualización**: Método para ver el siguiente número sin incrementar
+- **Inicialización Automática**: Creación automática de contadores por año
+
+### Métodos Principales
+
+- `get_next_number(year)`: Obtiene e incrementa el siguiente número
+- `peek_next_number(year)`: Previsualiza el siguiente número
+- `generate_approval_code(year)`: Genera código completo de aprobación
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+
+1. **Código de Caso Original**:
+   - Formato requerido: YYYY-NNNNN (ejemplo: 2025-00001)
+   - Debe existir en el sistema
+   - No puede tener solicitud de aprobación existente
+
+2. **Pruebas Complementarias**:
+   - Al menos una prueba requerida
+   - Cantidad entre 1 y 20 por prueba
+   - Códigos y nombres válidos
+
+3. **Motivo de Solicitud**:
+   - Campo requerido
+   - Máximo 1,000 caracteres
+   - Descripción clara del motivo
+
+4. **Código de Aprobación**:
+   - Formato requerido: AP-YYYY-NNN
+   - Generación automática
+   - Unicidad garantizada
+
+### Manejo de Errores
+
+- **BadRequestError (400)**: Datos de entrada inválidos
+- **NotFoundError (404)**: Solicitud o caso no encontrado
+- **ConflictError (409)**: Solicitud duplicada para el mismo caso
+- **Internal Server Error (500)**: Errores no controlados
+- **Validation Error (422)**: Errores de validación de Pydantic
+
+## Flujo de Trabajo Típico
+
+### 1. Creación de Solicitud
+```
+Usuario → Crear solicitud → Validar caso original → Generar código → Guardar solicitud
+```
+
+### 2. Gestión de Solicitud
+```
+Solicitud creada → Marcar en gestión → Revisar pruebas → Aprobar/Rechazar
+```
+
+### 3. Aprobación y Creación de Caso
+```
+Aprobar solicitud → Crear nuevo caso → Configurar pruebas → Asignar patólogo → Notificar
+```
+
+## Integración con Otros Módulos
+
+### Módulos Relacionados
+
+1. **Casos**: Validación de casos originales y creación de nuevos casos
+2. **Patólogos**: Información del patólogo asignado al caso original
+3. **Pruebas**: Validación de códigos de pruebas complementarias
+4. **Autenticación**: Control de acceso a operaciones de gestión
+5. **Reportes**: Estadísticas y métricas de aprobaciones
+6. **Notificaciones**: Alertas sobre cambios de estado
+
+### Consideraciones de Integración
+
+- Los códigos de aprobación deben ser estables y únicos
+- La eliminación debe considerar el estado del flujo
+- La aprobación genera automáticamente un nuevo caso
+- Sincronización con información del caso original
+- Mantenimiento de integridad referencial
+
+## Optimizaciones de Base de Datos
+
+### Índices Recomendados
+
+```javascript
+// MongoDB indexes
+db.approval_requests.createIndex({ "approval_code": 1 }, { unique: true })
+db.approval_requests.createIndex({ "original_case_code": 1 }, { unique: true })
+db.approval_requests.createIndex({ "approval_state": 1 })
+db.approval_requests.createIndex({ "created_at": -1 })
+db.approval_requests.createIndex({ "approval_info.request_date": -1 })
+
+// Índices para contadores
+db.approval_counters.createIndex({ "year": 1 }, { unique: true })
+```
+
+### Consideraciones de Rendimiento
+
+- Búsquedas optimizadas con índices específicos
+- Paginación eficiente para listados grandes
+- Límites de consulta para prevenir sobrecarga
+- Índices únicos para prevenir duplicados
+- Operaciones atómicas para contadores
+
+## Variables de Configuración
+
+El módulo utiliza las siguientes configuraciones del sistema:
+
+- **Database Connection**: Conexión a MongoDB
+- **Case Module Integration**: Configuración del módulo de casos
+- **Pathologist Module Integration**: Configuración del módulo de patólogos
+- **Authentication**: Configuración de autenticación y autorización
+- **Pagination Limits**: Límites máximos de registros por consulta
+- **Code Generation**: Configuración de generación de códigos consecutivos
+
+## Casos de Uso Comunes
+
+### 1. Solicitar Pruebas Complementarias
+```python
+# Crear solicitud para pruebas adicionales
+approval_data = {
+    "original_case_code": "2025-00001",
+    "complementary_tests": [
+        {
+            "code": "IHQ001",
+            "name": "Inmunohistoquímica para Ki-67",
+            "quantity": 1
+        }
+    ],
+    "reason": "Necesario para confirmar diagnóstico diferencial"
+}
+```
+
+### 2. Gestionar Solicitudes Pendientes
+```python
+# Obtener solicitudes pendientes de aprobación
+pending_approvals = await service.get_approvals_by_state("pending_approval", 20)
+```
+
+### 3. Aprobar y Crear Caso Automáticamente
+```python
+# Aprobar solicitud y crear nuevo caso
+result = await service.approve_request("AP-2025-001")
+# Resultado incluye la aprobación y el nuevo caso creado
+```
+
+### 4. Buscar Solicitudes por Criterios
+```python
+# Búsqueda avanzada con filtros
+search_params = {
+    "approval_state": "approved",
+    "request_date_from": "2025-01-01T00:00:00Z",
+    "request_date_to": "2025-01-31T23:59:59Z"
+}
+```
+
+### 5. Obtener Estadísticas de Rendimiento
+```python
+# Estadísticas generales del módulo
+stats = await service.get_statistics()
+# Incluye conteos por estado y métricas de rendimiento
+```
+
+## Características Técnicas Destacadas
+
+- **Códigos Únicos**: Sistema de códigos consecutivos por año (AP-YYYY-NNN)
+- **Flujo de Estados**: Gestión controlada del ciclo de vida de solicitudes
+- **Creación Automática de Casos**: Generación automática al aprobar solicitudes
+- **Búsqueda Avanzada**: Múltiples criterios de filtrado y paginación
+- **Validaciones Robustas**: Prevención de duplicados y datos inválidos
+- **Integración Completa**: Sincronización con módulos de casos y patólogos
+- **Estadísticas en Tiempo Real**: Métricas de rendimiento y estado
+- **Timestamps Automáticos**: Control de fechas de creación y actualización
+- **Operaciones Atómicas**: Generación segura de códigos consecutivos
+- **Autenticación Flexible**: Soporte para tokens expirados en creación
+- **Eliminación Física**: Eliminación completa cuando es necesario
+- **Manejo de Errores Robusto**: Control completo de excepciones y estados de error
+
+El módulo de aprobaciones proporciona un flujo completo para la gestión de solicitudes de pruebas complementarias en PathSys, con funcionalidades robustas de CRUD, gestión de estados, creación automática de casos, búsqueda avanzada y estadísticas en tiempo real, asegurando la integridad y eficiencia del proceso de aprobación de pruebas adicionales en el laboratorio de patología.

@@ -1,5 +1,328 @@
 ---
 id: mod-tests
-title: Tests
-sidebar_position: 4
+title: Pruebas
+sidebar_position: 7
 ---
+
+# Módulo de Pruebas
+
+## Objetivo
+
+El módulo de pruebas gestiona el catálogo de exámenes médicos disponibles en el sistema PathSys. Permite administrar información detallada sobre cada tipo de prueba, incluyendo códigos únicos, tiempos de procesamiento, precios y estados de activación.
+
+## Estructura de Archivos
+
+```
+app/modules/tests/
+├── __init__.py                 # Module exports
+├── routes/
+│   ├── __init__.py
+│   └── test_routes.py         # API endpoints for tests
+├── services/
+│   ├── __init__.py
+│   └── test_service.py        # Business logic layer
+├── repositories/
+│   ├── __init__.py
+│   └── test_repository.py     # Database operations
+└── schemas/
+    ├── __init__.py
+    └── test.py               # Data validation schemas
+```
+
+## API Endpoints
+
+### Crear Prueba
+- **Endpoint:** `POST /tests/`
+- **Descripción:** Crea una nueva prueba médica en el sistema
+- **Request Body:**
+```json
+{
+  "name": "Hemograma Completo",
+  "test_code": "HEM001",
+  "description": "Análisis completo de células sanguíneas",
+  "time": 120,
+  "price": 25.50,
+  "is_active": true
+}
+```
+- **Response:** `201 Created`
+```json
+{
+  "id": "64f8a1b2c3d4e5f6a7b8c9d0",
+  "name": "Hemograma Completo",
+  "test_code": "HEM001",
+  "description": "Análisis completo de células sanguíneas",
+  "time": 120,
+  "price": 25.50,
+  "is_active": true,
+  "created_at": "2023-09-06T10:30:00Z",
+  "updated_at": "2023-09-06T10:30:00Z"
+}
+```
+
+### Listar Pruebas Activas
+- **Endpoint:** `GET /tests/`
+- **Descripción:** Obtiene lista de pruebas activas con búsqueda y paginación
+- **Query Parameters:**
+  - `query` (opcional): Término de búsqueda
+  - `skip` (opcional): Número de registros a omitir (default: 0)
+  - `limit` (opcional): Límite de registros (default: 10, max: 100)
+- **Response:** `200 OK`
+```json
+[
+  {
+    "id": "64f8a1b2c3d4e5f6a7b8c9d0",
+    "name": "Hemograma Completo",
+    "test_code": "HEM001",
+    "description": "Análisis completo de células sanguíneas",
+    "time": 120,
+    "price": 25.50,
+    "is_active": true,
+    "created_at": "2023-09-06T10:30:00Z",
+    "updated_at": "2023-09-06T10:30:00Z"
+  }
+]
+```
+
+### Listar Todas las Pruebas
+- **Endpoint:** `GET /tests/inactive`
+- **Descripción:** Obtiene lista completa de pruebas (activas e inactivas)
+- **Query Parameters:** Mismos que el endpoint anterior
+- **Response:** `200 OK` - Array de pruebas
+
+### Obtener Prueba por Código
+- **Endpoint:** `GET /tests/{test_code}`
+- **Descripción:** Obtiene una prueba específica por su código único
+- **Path Parameters:**
+  - `test_code`: Código único de la prueba
+- **Response:** `200 OK` - Objeto de prueba
+- **Errores:** `404 Not Found` si la prueba no existe
+
+### Actualizar Prueba
+- **Endpoint:** `PUT /tests/{test_code}`
+- **Descripción:** Actualiza información de una prueba existente
+- **Path Parameters:**
+  - `test_code`: Código único de la prueba
+- **Request Body:**
+```json
+{
+  "name": "Hemograma Completo Actualizado",
+  "description": "Análisis completo y detallado de células sanguíneas",
+  "time": 150,
+  "price": 30.00,
+  "is_active": false
+}
+```
+- **Response:** `200 OK` - Objeto de prueba actualizado
+- **Errores:** 
+  - `404 Not Found` si la prueba no existe
+  - `409 Conflict` si el nuevo código ya existe
+
+### Eliminar Prueba
+- **Endpoint:** `DELETE /tests/{test_code}`
+- **Descripción:** Elimina permanentemente una prueba del sistema
+- **Path Parameters:**
+  - `test_code`: Código único de la prueba
+- **Response:** `200 OK`
+```json
+{
+  "message": "Test HEM001 deleted successfully"
+}
+```
+- **Errores:** `404 Not Found` si la prueba no existe
+
+## Esquemas de Datos
+
+### TestCreate
+Esquema para crear nuevas pruebas:
+```json
+{
+  "name": "string (1-200 chars, required)",
+  "test_code": "string (1-20 chars, required, uppercase)",
+  "description": "string (max 500 chars, optional)",
+  "time": "integer (1-1440 minutes, default: 6)",
+  "price": "float (>= 0, default: 0)",
+  "is_active": "boolean (default: true)"
+}
+```
+
+### TestUpdate
+Esquema para actualizar pruebas existentes:
+```json
+{
+  "name": "string (1-200 chars, optional)",
+  "test_code": "string (1-20 chars, optional, uppercase)",
+  "description": "string (max 500 chars, optional)",
+  "time": "integer (1-1440 minutes, optional)",
+  "price": "float (>= 0, optional)",
+  "is_active": "boolean (optional)"
+}
+```
+
+### TestResponse
+Esquema de respuesta completo:
+```json
+{
+  "id": "string (MongoDB ObjectId)",
+  "name": "string",
+  "test_code": "string (uppercase)",
+  "description": "string",
+  "time": "integer (minutes)",
+  "price": "float",
+  "is_active": "boolean",
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+### TestSearch
+Esquema para búsquedas y paginación:
+```json
+{
+  "query": "string (optional)",
+  "skip": "integer (>= 0, default: 0)",
+  "limit": "integer (1-100, default: 10)"
+}
+```
+
+## Lógica de Negocio
+
+### TestService
+La clase `TestService` maneja la lógica de negocio del módulo:
+
+- **Validación de unicidad:** Verifica que los códigos de prueba sean únicos
+- **Gestión de estados:** Controla pruebas activas e inactivas
+- **Búsqueda inteligente:** Permite búsqueda por nombre, código o descripción
+- **Manejo de errores:** Proporciona mensajes de error específicos
+
+#### Métodos principales:
+- `create_test()`: Crea nueva prueba con validación de código único
+- `get_by_code()`: Obtiene prueba por código específico
+- `list_active()`: Lista solo pruebas activas con filtros
+- `list_all()`: Lista todas las pruebas (activas e inactivas)
+- `update_by_code()`: Actualiza prueba existente
+- `delete_by_code()`: Elimina prueba permanentemente
+
+## Repositorio
+
+### TestRepository
+La clase `TestRepository` maneja las operaciones de base de datos:
+
+#### Características principales:
+- **Conversión de documentos:** Transforma ObjectId de MongoDB a string
+- **Búsqueda flexible:** Soporta regex para búsquedas parciales
+- **Paginación eficiente:** Implementa skip/limit para grandes datasets
+- **Ordenamiento:** Ordena por fecha de creación (más recientes primero)
+- **Gestión de timestamps:** Maneja created_at y updated_at automáticamente
+
+#### Operaciones disponibles:
+- `create()`: Inserta nueva prueba con timestamps
+- `get_by_code()`: Búsqueda por código (case-insensitive)
+- `list_active()`: Lista pruebas activas con filtros
+- `list_all()`: Lista todas las pruebas con filtros
+- `update_by_code()`: Actualización parcial con timestamp
+- `delete_by_code()`: Eliminación física del documento
+- `exists_code()`: Verificación de existencia de código
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+- **Nombre:** Requerido, 1-200 caracteres, no puede estar vacío
+- **Código de prueba:** Requerido, 1-20 caracteres, convertido a mayúsculas
+- **Descripción:** Opcional, máximo 500 caracteres
+- **Tiempo:** Entero positivo, 1-1440 minutos (24 horas máximo)
+- **Precio:** Número decimal no negativo
+
+### Manejo de Errores
+- **409 Conflict:** Código de prueba duplicado
+- **404 Not Found:** Prueba no encontrada
+- **422 Validation Error:** Datos de entrada inválidos
+- **500 Internal Server Error:** Errores del servidor
+
+### Búsqueda Avanzada
+El sistema permite búsqueda por:
+- **Nombre de la prueba** (búsqueda parcial, case-insensitive)
+- **Código de prueba** (búsqueda parcial, case-insensitive)
+- **Descripción** (búsqueda parcial, case-insensitive)
+
+## Integración con Otros Módulos
+
+### Módulo de Casos
+- Las pruebas se asocian a casos médicos específicos
+- Cada caso puede incluir múltiples pruebas
+- Los tiempos de prueba afectan la planificación de casos
+
+### Sistema de Facturación
+- Los precios de las pruebas se utilizan para cálculos de facturación
+- Las pruebas inactivas no están disponibles para nuevos casos
+
+### Módulo de Reportes
+- Los datos de pruebas se incluyen en reportes médicos
+- Estadísticas de uso de pruebas por período
+
+## Optimizaciones de Base de Datos
+
+### Índices Recomendados
+```javascript
+// Índice único para código de prueba
+db.tests.createIndex({ "test_code": 1 }, { unique: true })
+
+// Índice compuesto para búsquedas activas
+db.tests.createIndex({ "is_active": 1, "created_at": -1 })
+
+// Índice de texto para búsqueda
+db.tests.createIndex({
+  "name": "text",
+  "test_code": "text", 
+  "description": "text"
+})
+```
+
+## Variables de Configuración
+
+El módulo utiliza las siguientes configuraciones:
+- **Database connection:** Conexión a MongoDB
+- **Collection name:** `tests`
+- **Default pagination:** 10 registros por página
+- **Max pagination:** 100 registros por página
+
+## Casos de Uso Comunes
+
+### 1. Registro de Nueva Prueba
+```python
+# Crear nueva prueba de laboratorio
+test_data = {
+    "name": "Glucosa en Sangre",
+    "test_code": "GLU001",
+    "description": "Medición de niveles de glucosa",
+    "time": 30,
+    "price": 15.00
+}
+```
+
+### 2. Búsqueda de Pruebas
+```python
+# Buscar pruebas por término
+search_params = {
+    "query": "sangre",
+    "skip": 0,
+    "limit": 20
+}
+```
+
+### 3. Actualización de Precios
+```python
+# Actualizar precio de prueba existente
+update_data = {
+    "price": 18.50,
+    "description": "Medición actualizada de glucosa"
+}
+```
+
+### 4. Desactivación de Prueba
+```python
+# Desactivar prueba obsoleta
+update_data = {
+    "is_active": false
+}
+```

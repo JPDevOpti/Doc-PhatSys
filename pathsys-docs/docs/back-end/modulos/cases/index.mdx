@@ -1,0 +1,59 @@
+# Módulo de Casos
+
+El módulo de casos es el núcleo central del sistema PathSys, encargado de gestionar todo el ciclo de vida de los casos patológicos, desde su creación hasta la entrega de resultados.
+
+## Visión General
+
+Este módulo maneja:
+
+- **Gestión de Casos**: Creación, actualización y seguimiento de casos patológicos
+- **Resultados**: Procesamiento y almacenamiento de resultados de laboratorio
+- **Firmas Digitales**: Sistema de firma y validación de resultados
+- **Estadísticas**: Análisis y reportes estadísticos completos
+- **Generación de PDF**: Reportes y documentos oficiales
+- **Casos Urgentes**: Manejo prioritario de casos críticos
+
+## Estructura del Módulo
+
+```
+cases/
+├── routes/           # Endpoints de la API
+├── services/         # Lógica de negocio
+├── repositories/     # Acceso a datos
+├── schemas/          # Validación de datos
+└── templates/        # Plantillas para reportes
+```
+
+## Componentes Principales
+
+### 🔬 **Gestión de Casos**
+Funcionalidad principal para crear, actualizar y gestionar casos patológicos con información completa del paciente, muestras y seguimiento.
+
+### 📊 **Resultados**
+Sistema para registrar y gestionar resultados de análisis patológicos, incluyendo diagnósticos macro y microscópicos.
+
+### ✍️ **Firmas Digitales**
+Proceso de validación y firma digital de resultados por parte de patólogos autorizados.
+
+### 📈 **Estadísticas**
+Módulo completo de análisis estadístico con múltiples dimensiones:
+- Dashboard general
+- Estadísticas por entidad
+- Análisis de oportunidad
+- Rendimiento de patólogos
+- Estadísticas por pruebas
+
+### 📄 **Generación de PDF**
+Sistema de generación de reportes oficiales y documentos para entrega a pacientes y entidades.
+
+### 🚨 **Casos Urgentes**
+Gestión especializada para casos que requieren atención prioritaria.
+
+## Navegación
+
+- [**Gestión de Casos**](./gestion-casos) - Operaciones CRUD y gestión completa de casos
+- [**Resultados**](./resultados) - Manejo de resultados macro y microscópicos
+- [**Firmas Digitales**](./firmas) - Sistema de firmas y validaciones
+- [**Estadísticas**](./estadisticas/) - Análisis y métricas del módulo
+- [**PDF y Reportes**](./pdf-reportes) - Generación de documentos oficiales
+- [**Casos Urgentes**](./casos-urgentes) - Gestión de casos prioritarios

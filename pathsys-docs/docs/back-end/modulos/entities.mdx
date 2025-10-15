@@ -1,5 +1,315 @@
 ---
 id: mod-entities
 title: Entidades
-sidebar_position: 9
+sidebar_position: 6
 ---
+
+# Módulo de Entidades
+
+## Objetivo
+
+El módulo de entidades gestiona las entidades médicas del sistema PathSys, permitiendo el registro, consulta, actualización y administración de organizaciones, instituciones o entidades que participan en el proceso de análisis patológico. Este módulo es fundamental para la organización y categorización de casos médicos.
+
+## Estructura de Archivos
+
+```
+app/modules/entities/
+├── __init__.py                 # Exports del módulo
+├── routes/
+│   └── entity_routes.py       # Endpoints REST API
+├── services/
+│   ├── __init__.py            # Exports de servicios
+│   └── entity_service.py      # Lógica de negocio
+├── repositories/
+│   └── entity_repository.py   # Operaciones de base de datos
+└── schemas/
+    ├── __init__.py            # Exports de esquemas
+    └── entity.py              # Modelos de datos
+```
+
+## Endpoints API
+
+### Crear Entidad
+- **POST** `/entities/`
+- **Descripción**: Crea una nueva entidad en el sistema
+- **Request Body**: `EntityCreate`
+- **Response**: `EntityResponse` (201 Created)
+- **Errores**:
+  - 400: Datos inválidos
+  - 409: Código de entidad ya existe
+  - 500: Error interno del servidor
+
+### Listar Entidades Activas
+- **GET** `/entities/`
+- **Descripción**: Obtiene lista de entidades activas con búsqueda y paginación
+- **Query Parameters**:
+  - `query` (opcional): Término de búsqueda
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 10, max: 100): Número máximo de registros
+- **Response**: `List[EntityResponse]`
+
+### Listar Todas las Entidades
+- **GET** `/entities/inactive`
+- **Descripción**: Obtiene lista completa de entidades (activas e inactivas)
+- **Query Parameters**: Mismos que el endpoint anterior
+- **Response**: `List[EntityResponse]`
+
+### Obtener Entidad por Código
+- **GET** `/entities/{entity_code}`
+- **Descripción**: Obtiene una entidad específica por su código
+- **Path Parameters**:
+  - `entity_code`: Código único de la entidad
+- **Response**: `EntityResponse`
+- **Errores**:
+  - 404: Entidad no encontrada
+  - 500: Error interno del servidor
+
+### Actualizar Entidad
+- **PUT** `/entities/{entity_code}`
+- **Descripción**: Actualiza una entidad existente
+- **Path Parameters**:
+  - `entity_code`: Código único de la entidad
+- **Request Body**: `EntityUpdate`
+- **Response**: `EntityResponse`
+- **Errores**:
+  - 400: Datos inválidos
+  - 404: Entidad no encontrada
+  - 409: Conflicto con código existente
+  - 500: Error interno del servidor
+
+### Eliminar Entidad
+- **DELETE** `/entities/{entity_code}`
+- **Descripción**: Elimina una entidad del sistema
+- **Path Parameters**:
+  - `entity_code`: Código único de la entidad
+- **Response**: `{"message": "Entity {code} deleted successfully"}`
+- **Errores**:
+  - 404: Entidad no encontrada
+  - 500: Error interno del servidor
+
+## Esquemas de Datos
+
+### EntityBase
+Esquema base para entidades:
+```python
+{
+    "name": "string",           # Nombre de la entidad (1-200 caracteres)
+    "entity_code": "string",    # Código único (1-20 caracteres, uppercase)
+    "notes": "string",          # Notas adicionales (opcional, max 500 caracteres)
+    "is_active": "boolean"      # Estado activo/inactivo (default: true)
+}
+```
+
+### EntityCreate
+Esquema para crear entidades (hereda de EntityBase):
+- Todos los campos son requeridos excepto `notes`
+- `entity_code` se convierte automáticamente a mayúsculas
+- `name` se limpia de espacios en blanco
+
+### EntityUpdate
+Esquema para actualizar entidades:
+```python
+{
+    "name": "string",           # Opcional
+    "entity_code": "string",    # Opcional
+    "notes": "string",          # Opcional
+    "is_active": "boolean"      # Opcional
+}
+```
+
+### EntityResponse
+Esquema de respuesta (hereda de EntityBase):
+```python
+{
+    "id": "string",             # ID único generado
+    "name": "string",
+    "entity_code": "string",
+    "notes": "string",
+    "is_active": "boolean",
+    "created_at": "datetime",   # Fecha de creación
+    "updated_at": "datetime"    # Fecha de última actualización
+}
+```
+
+### EntitySearch
+Esquema para búsquedas y paginación:
+```python
+{
+    "query": "string",          # Término de búsqueda (opcional)
+    "skip": "integer",          # Registros a omitir (min: 0)
+    "limit": "integer"          # Límite de registros (1-100)
+}
+```
+
+## Lógica de Negocio (EntityService)
+
+### Funcionalidades Principales
+
+1. **Creación de Entidades**:
+   - Validación de unicidad del código
+   - Manejo de errores de conflicto
+
+2. **Consulta por Código**:
+   - Búsqueda case-insensitive
+   - Compatibilidad con códigos legacy
+
+3. **Listado con Filtros**:
+   - Búsqueda por nombre, código o notas
+   - Paginación configurable
+   - Filtrado por estado activo/inactivo
+
+4. **Actualización**:
+   - Validación de cambios de código
+   - Prevención de conflictos
+   - Actualización de timestamps
+
+5. **Eliminación**:
+   - Verificación de existencia
+   - Eliminación física del registro
+
+## Operaciones de Repositorio (EntityRepository)
+
+### Métodos Principales
+
+- `create(data)`: Inserta nueva entidad con timestamps
+- `get_by_code(code)`: Busca entidad por código (con compatibilidad legacy)
+- `list_active(search)`: Lista entidades activas con búsqueda
+- `list_all(search)`: Lista todas las entidades
+- `update_by_code(code, update)`: Actualiza entidad por código
+- `delete_by_code(code)`: Elimina entidad por código
+- `exists_code(code)`: Verifica existencia de código
+
+### Características Técnicas
+
+- **Compatibilidad Legacy**: Soporte para campos `code` y `entity_code`
+- **Búsqueda Avanzada**: Regex case-insensitive en múltiples campos
+- **Conversión de Documentos**: Transformación automática de `_id` a `id`
+- **Ordenamiento**: Por fecha de creación descendente
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+
+1. **Nombre de Entidad**:
+   - No puede estar vacío
+   - Máximo 200 caracteres
+   - Se eliminan espacios en blanco
+
+2. **Código de Entidad**:
+   - No puede estar vacío
+   - Máximo 20 caracteres
+   - Conversión automática a mayúsculas
+   - Debe ser único en el sistema
+
+3. **Notas**:
+   - Opcional
+   - Máximo 500 caracteres
+
+### Manejo de Errores
+
+- **ConflictError (409)**: Código de entidad duplicado
+- **NotFoundError (404)**: Entidad no encontrada
+- **BadRequestError (400)**: Datos de entrada inválidos
+- **Internal Server Error (500)**: Errores no controlados
+
+## Búsqueda Avanzada
+
+### Campos de Búsqueda
+La búsqueda se realiza en los siguientes campos:
+- `name`: Nombre de la entidad
+- `entity_code`: Código de la entidad
+- `notes`: Notas adicionales
+
+### Características
+- **Case-insensitive**: No distingue mayúsculas/minúsculas
+- **Búsqueda parcial**: Utiliza expresiones regulares
+- **Paginación**: Control de `skip` y `limit`
+- **Ordenamiento**: Por fecha de creación (más recientes primero)
+
+## Integración con Otros Módulos
+
+### Módulos Relacionados
+
+1. **Casos**: Las entidades se asocian a casos médicos
+2. **Pacientes**: Relación con instituciones de origen
+3. **Facturación**: Entidades como clientes o proveedores
+4. **Reportes**: Agrupación y análisis por entidad
+
+### Consideraciones de Integración
+
+- Los códigos de entidad deben ser únicos y estables
+- La eliminación debe considerar referencias en otros módulos
+- El estado `is_active` afecta la disponibilidad en otros procesos
+
+## Optimizaciones de Base de Datos
+
+### Índices Recomendados
+
+```javascript
+// MongoDB indexes
+db.entities.createIndex({ "entity_code": 1 }, { unique: true })
+db.entities.createIndex({ "code": 1 })  // Legacy compatibility
+db.entities.createIndex({ "is_active": 1 })
+db.entities.createIndex({ "created_at": -1 })
+db.entities.createIndex({ 
+    "name": "text", 
+    "entity_code": "text", 
+    "notes": "text" 
+})
+```
+
+### Consideraciones de Rendimiento
+
+- Búsquedas optimizadas con índices de texto
+- Paginación eficiente con `skip` y `limit`
+- Compatibilidad legacy sin impacto en rendimiento
+
+## Variables de Configuración
+
+El módulo utiliza las siguientes configuraciones del sistema:
+
+- **Database Connection**: Conexión a MongoDB
+- **Pagination Limits**: Límites máximos de registros por consulta
+- **Logging Level**: Nivel de logging para auditoría
+
+## Casos de Uso Comunes
+
+### 1. Registro de Nueva Entidad
+```python
+# Crear entidad médica
+entity_data = {
+    "name": "Hospital General",
+    "entity_code": "HG001",
+    "notes": "Hospital público de referencia",
+    "is_active": True
+}
+```
+
+### 2. Búsqueda de Entidades
+```python
+# Buscar entidades por término
+search_params = {
+    "query": "hospital",
+    "skip": 0,
+    "limit": 20
+}
+```
+
+### 3. Actualización de Información
+```python
+# Actualizar datos de entidad
+update_data = {
+    "name": "Hospital General Actualizado",
+    "notes": "Información actualizada"
+}
+```
+
+### 4. Desactivación de Entidad
+```python
+# Desactivar entidad sin eliminar
+update_data = {
+    "is_active": False
+}
+```
+
+El módulo de entidades proporciona una base sólida para la gestión de organizaciones médicas en PathSys, con funcionalidades completas de CRUD, búsqueda avanzada y integración con otros componentes del sistema.

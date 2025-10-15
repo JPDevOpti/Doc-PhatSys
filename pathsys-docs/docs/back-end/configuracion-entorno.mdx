@@ -1,5 +1,295 @@
 ---
 id: configuracion-entorno
-title: Configuración y entorno
+title: Configuración
 sidebar_position: 2
 ---
+
+import CodeBlock from '@theme/CodeBlock'
+
+## Objetivo y configuración general
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  Esta sección detalla la configuración del Back-End de PathSys, incluyendo variables de entorno, configuración de seguridad, base de datos, logging y despliegue con Docker. Aquí encontrarás cómo configurar el entorno de desarrollo y producción.
+</div>
+
+## Variables de entorno
+
+### Configuración principal
+
+<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>API Configuration</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>
+      • <code>PROJECT_NAME</code>: "WEB-LIS PathSys API"<br/>
+      • <code>VERSION</code>: "2.0.0"<br/>
+      • <code>API_V1_STR</code>: "/api/v1"
+    </div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Environment</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>
+      • <code>ENVIRONMENT</code>: development/production<br/>
+      • <code>DEBUG</code>: True/False<br/>
+      • <code>LOG_LEVEL</code>: INFO/DEBUG/ERROR
+    </div>
+  </div>
+</div>
+
+### Variables de seguridad
+
+<CodeBlock language="bash">
+{`# Configuración JWT
+SECRET_KEY=your-secret-key-min-32-chars
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=480  # 8 horas en desarrollo, 30 en producción
+
+# Validaciones automáticas
+# - SECRET_KEY debe tener mínimo 32 caracteres
+# - En producción es obligatorio configurar SECRET_KEY`}
+</CodeBlock>
+
+### Variables de base de datos
+
+<CodeBlock language="bash">
+{`# MongoDB Configuration
+MONGODB_URL=mongodb://localhost:27017  # Desarrollo local
+MONGODB_URL=mongodb+srv://user:pass@cluster.mongodb.net/  # Atlas/Producción
+DATABASE_NAME=lime_pathsys
+
+# Configuración de índices
+CREATE_INDEXES_ON_STARTUP=True`}
+</CodeBlock>
+
+### Variables de archivos y storage
+
+<CodeBlock language="bash">
+{`# File Storage
+UPLOAD_DIR=uploads
+MAX_FILE_SIZE=10485760  # 10MB en bytes
+
+# Email Configuration (futuro uso)
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=`}
+</CodeBlock>
+
+## Configuración de seguridad
+
+### Autenticación JWT
+
+<CodeBlock language="python">
+{`# Configuración de tokens
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas desarrollo
+ACCESS_TOKEN_EXPIRE_MINUTES = 30   # 30 minutos producción
+
+# Algoritmo de encriptación
+ALGORITHM = "HS256"
+
+# Validación de SECRET_KEY
+- Mínimo 32 caracteres
+- Obligatorio en producción
+- Valor por defecto seguro en desarrollo`}
+</CodeBlock>
+
+### Hash de contraseñas
+
+<CodeBlock language="python">
+{`# Configuración de CryptContext
+pwd_context = CryptContext(
+    schemes=["argon2", "bcrypt"], 
+    deprecated="auto"
+)
+
+# Características:
+- Argon2 por defecto (sin límite de longitud)
+- Soporte para bcrypt legacy
+- Límite de 72 bytes para bcrypt
+- Migración automática de esquemas obsoletos`}
+</CodeBlock>
+
+### CORS Configuration
+
+<CodeBlock language="python">
+{`# Orígenes permitidos
+BACKEND_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",  # Puerto del frontend
+    "http://localhost:8080",
+    "http://127.0.0.1:5174",
+    "http://frontend:3000",   # Docker
+]
+
+# Configuración en FastAPI
+allow_credentials=True
+allow_methods=["*"]
+allow_headers=["*"]`}
+</CodeBlock>
+
+## Configuración de base de datos
+
+### Conexión MongoDB
+
+<CodeBlock language="python">
+{`# Opciones de conexión
+connection_options = {
+    "serverSelectionTimeoutMS": 5000,
+    "connectTimeoutMS": 10000,
+    "socketTimeoutMS": 20000,
+    "maxPoolSize": 10,
+    "minPoolSize": 1,
+    "maxIdleTimeMS": 30000,
+    "retryWrites": True,
+    "retryReads": True
+}
+
+# Driver asíncrono
+AsyncIOMotorClient(MONGODB_URL, **connection_options)`}
+</CodeBlock>
+
+### Gestión de índices
+
+<CodeBlock language="python">
+{`# Creación automática de índices al inicio
+CREATE_INDEXES_ON_STARTUP = True
+
+# Índices implementados:
+- Índices únicos para identificadores
+- Índices compuestos para consultas frecuentes
+- Índices de texto para búsquedas
+- Índices TTL para datos temporales`}
+</CodeBlock>
+
+## Configuración de logging
+
+### Configuración estructurada
+
+<CodeBlock language="python">
+{`# Configuración actual (logging mínimo)
+LOG_LEVEL = "ERROR"  # Solo errores críticos
+LOG_FORMAT = "json"  # Formato JSON estructurado
+
+# Loggers configurados:
+- Root logger: nivel ERROR
+- App logger: nivel ERROR  
+- Uvicorn: nivel ERROR
+- Motor: nivel ERROR
+
+# Formatters disponibles:
+- JSON: pythonjsonlogger.jsonlogger.JsonFormatter
+- Simple: formato texto legible`}
+</CodeBlock>
+
+## Configuración de Docker
+
+### Dockerfile de producción
+
+<CodeBlock language="dockerfile">
+{`FROM python:3.11-slim
+
+# Dependencias del sistema
+RUN apt-get update && apt-get install -y gcc
+
+# Instalación de dependencias Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Configuración de seguridad
+RUN useradd --create-home --shell /bin/bash app
+USER app
+
+# Variables de entorno
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Puerto expuesto
+EXPOSE 8000
+
+# Comando de inicio
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]`}
+</CodeBlock>
+
+### Docker Compose para desarrollo
+
+<CodeBlock language="yaml">
+{`# docker-compose.dev.yml
+version: '3.8'
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=True
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`}
+</CodeBlock>
+
+## Archivos de configuración
+
+### Estructura de archivos
+
+<CodeBlock language="text">
+{`config/
+├── settings.py          # Configuración principal con Pydantic
+├── database.py          # Gestión de conexión MongoDB
+├── security.py          # JWT y hash de contraseñas
+├── logging_config.py    # Configuración de logging
+└── database_indexes.py  # Definición de índices
+
+# Archivos de entorno
+├── .env                 # Variables locales (no versionado)
+├── config.atlas.env     # Configuración para MongoDB Atlas
+└── docker-compose.dev.yml  # Configuración Docker desarrollo`}
+</CodeBlock>
+
+### Ejemplo de archivo .env
+
+<CodeBlock language="bash">
+{`# .env (desarrollo local)
+ENVIRONMENT=development
+DEBUG=True
+SECRET_KEY=dev-secret-key-please-change-in-prod-32-chars-min
+MONGODB_URL=mongodb://localhost:27017
+DATABASE_NAME=lime_pathsys
+ACCESS_TOKEN_EXPIRE_MINUTES=480
+LOG_LEVEL=INFO
+CREATE_INDEXES_ON_STARTUP=True`}
+</CodeBlock>
+
+### Ejemplo de configuración de producción
+
+<CodeBlock language="bash">
+{`# config.atlas.env (producción)
+ENVIRONMENT=production
+DEBUG=False
+SECRET_KEY=your-production-secret-key-change-this
+MONGODB_URL=mongodb+srv://user:pass@cluster.mongodb.net/
+DATABASE_NAME=lime_pathsys
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+LOG_LEVEL=ERROR
+CREATE_INDEXES_ON_STARTUP=True`}
+</CodeBlock>
+
+## Validaciones y buenas prácticas
+
+### Validaciones automáticas
+
+- **SECRET_KEY**: Mínimo 32 caracteres, obligatorio en producción
+- **MONGODB_URL**: Formato válido de URL MongoDB
+- **CORS_ORIGINS**: Parsing automático de strings separados por comas
+- **Environment**: Configuración diferenciada por entorno
+
+### Recomendaciones de seguridad
+
+1. **Nunca** versionar archivos `.env` con credenciales reales
+2. Usar **SECRET_KEY** diferentes para cada entorno
+3. Configurar **ACCESS_TOKEN_EXPIRE_MINUTES** corto en producción
+4. Habilitar **HTTPS** en producción
+5. Restringir **CORS_ORIGINS** a dominios específicos
+6. Usar **MongoDB Atlas** con autenticación en producción

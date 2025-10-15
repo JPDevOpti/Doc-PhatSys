@@ -1,5 +1,377 @@
 ---
 id: mod-auth
-title: Auth
+title: Autentificacion
 sidebar_position: 1
 ---
+
+import CodeBlock from '@theme/CodeBlock'
+
+## Objetivo del módulo
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  El módulo de autenticación (Auth) gestiona la autenticación y autorización de usuarios en PathSys. Proporciona funcionalidades para login, verificación de tokens JWT, y gestión de sesiones de usuario con diferentes roles del sistema.
+</div>
+
+## Estructura del módulo
+
+<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Routes</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>
+      • <code>auth_routes.py</code>: Endpoints de autenticación<br/>
+      • Login y obtención de perfil de usuario
+    </div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Services</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>
+      • <code>auth_service.py</code>: Lógica de negocio<br/>
+      • Autenticación y gestión de tokens
+    </div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Repositories</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>
+      • <code>auth_repository.py</code>: Acceso a datos<br/>
+      • Consultas de usuarios en MongoDB
+    </div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Schemas</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>
+      • <code>login.py</code>: Esquemas de login<br/>
+      • <code>administrator.py</code>: Esquemas de admin
+    </div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Models</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>
+      • <code>user.py</code>: Modelos de usuario<br/>
+      • UserInDB y UserPublic
+    </div>
+  </div>
+</div>
+
+## Endpoints disponibles
+
+### POST /api/v1/auth/login
+
+Autentica un usuario y devuelve un token JWT.
+
+<CodeBlock language="python">
+{`# Request
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+# Response
+{
+  "token": {
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+    "token_type": "bearer",
+    "expires_in": 28800  # 8 horas en desarrollo
+  },
+  "user": {
+    "id": "507f1f77bcf86cd799439011",
+    "name": "Usuario Ejemplo",
+    "email": "user@example.com",
+    "role": "pathologist",
+    "is_active": true,
+    "administrator_code": null,
+    "pathologist_code": "PATH001",
+    "resident_code": null,
+    "auxiliary_code": null,
+    "billing_code": null
+  }
+}`}
+</CodeBlock>
+
+**Características:**
+- Validación de email case-insensitive
+- Verificación de contraseña con Argon2/bcrypt
+- Generación de token JWT con expiración configurable
+- Manejo seguro de errores sin filtrar detalles internos
+
+### GET /api/v1/auth/me
+
+Obtiene la información del usuario autenticado.
+
+<CodeBlock language="python">
+{`# Headers
+Authorization: Bearer <token>
+
+# Response
+{
+  "id": "507f1f77bcf86cd799439011",
+  "name": "Usuario Ejemplo",
+  "email": "user@example.com",
+  "role": "pathologist",
+  "is_active": true,
+  "administrator_code": null,
+  "pathologist_code": "PATH001",
+  "resident_code": null,
+  "auxiliary_code": null,
+  "billing_code": null
+}`}
+</CodeBlock>
+
+**Características:**
+- Requiere token JWT válido
+- Devuelve información pública del usuario
+- Verifica que el usuario esté activo
+
+## Funciones de dependencia
+
+### get_current_user_id
+
+Dependencia obligatoria que extrae y valida el user_id del token JWT.
+
+<CodeBlock language="python">
+{`async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
+    subject = verify_token(token)
+    if subject is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return subject
+
+# Uso en endpoints
+@router.get("/protected")
+async def protected_endpoint(user_id: str = Depends(get_current_user_id)):
+    # user_id contiene el ID del usuario autenticado
+    pass`}
+</CodeBlock>
+
+### get_current_user_id_optional
+
+Dependencia opcional que devuelve el user_id si hay token válido, o None si no.
+
+<CodeBlock language="python">
+{`async def get_current_user_id_optional(credentials = Depends(http_bearer)) -> Optional[str]:
+    if not credentials:
+        return None
+    
+    try:
+        subject = verify_token(credentials.credentials)
+        return subject
+    except Exception:
+        return None
+
+# Uso en endpoints públicos con funcionalidad opcional para usuarios autenticados
+@router.get("/public-with-auth")
+async def public_endpoint(user_id: Optional[str] = Depends(get_current_user_id_optional)):
+    if user_id:
+        # Usuario autenticado - mostrar contenido personalizado
+        pass
+    else:
+        # Usuario anónimo - mostrar contenido público
+        pass`}
+</CodeBlock>
+
+## Modelos de datos
+
+### UserInDB
+
+Modelo completo del usuario almacenado en la base de datos.
+
+<CodeBlock language="python">
+{`class UserInDB(BaseModel):
+    id: Optional[str] = None
+    name: str
+    email: EmailStr
+    role: str  # "administrator", "pathologist", "resident", "auxiliary", "billing"
+    password_hash: str  # Hash Argon2 de la contraseña
+    is_active: bool = True
+    administrator_code: Optional[str] = None
+
+# Roles disponibles:
+- administrator: Administrador del sistema
+- pathologist: Patólogo
+- resident: Residente
+- auxiliary: Personal auxiliar
+- billing: Personal de facturación`}
+</CodeBlock>
+
+### UserPublic
+
+Modelo público del usuario (sin información sensible).
+
+<CodeBlock language="python">
+{`class UserPublic(BaseModel):
+    id: Optional[str] = None
+    name: str
+    email: EmailStr
+    role: str
+    is_active: bool = True
+    administrator_code: Optional[str] = None
+
+# Campos excluidos por seguridad:
+- password_hash: Nunca se expone en respuestas públicas`}
+</CodeBlock>
+
+## Esquemas de request/response
+
+### LoginRequest
+
+<CodeBlock language="python">
+{`class LoginRequest(BaseModel):
+    email: EmailStr = Field(..., description="User email")
+    password: str = Field(..., min_length=6, max_length=128)
+
+# Validaciones:
+- Email válido según RFC 5322
+- Contraseña entre 6 y 128 caracteres
+- Campos obligatorios`}
+</CodeBlock>
+
+### LoginResponse
+
+<CodeBlock language="python">
+{`class LoginResponse(BaseModel):
+    token: TokenResponse
+    user: dict
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int  # Segundos hasta expiración`}
+</CodeBlock>
+
+### AdministratorCreate
+
+<CodeBlock language="python">
+{`class AdministratorCreate(BaseModel):
+    name: str = Field(..., description="Administrator name")
+    email: EmailStr = Field(..., description="Administrator email")
+    password: str = Field(..., min_length=6, max_length=128)
+    is_active: bool = Field(default=True)
+
+# Usado para crear nuevos administradores del sistema`}
+</CodeBlock>
+
+## Lógica de negocio (AuthService)
+
+### Método login
+
+<CodeBlock language="python">
+{`async def login(self, email: EmailStr, password: str) -> Dict[str, Any]:
+    # 1. Buscar usuario por email (case-insensitive)
+    user = await self.repo.get_user_by_email(email)
+    if not user:
+        raise ValueError("Invalid credentials")
+
+    # 2. Verificar contraseña
+    if not verify_password(password, user.get("password_hash", "")):
+        raise ValueError("Invalid credentials")
+
+    # 3. Generar token JWT
+    expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    token = create_access_token(subject=user["_id"], expires_delta=expires_delta)
+
+    # 4. Preparar respuesta con datos públicos del usuario
+    return {
+        "token": {...},
+        "user": {...}
+    }`}
+</CodeBlock>
+
+### Método get_user_public_by_id
+
+<CodeBlock language="python">
+{`async def get_user_public_by_id(self, user_id: str) -> Dict[str, Any]:
+    # 1. Buscar usuario por ID
+    user = await self.repo.get_user_by_id(user_id)
+    if not user:
+        raise ValueError("User not found or inactive")
+
+    # 2. Devolver solo información pública
+    return {
+        "id": user.get("_id"),
+        "name": user.get("name"),
+        "email": user.get("email"),
+        "role": user.get("role"),
+        "is_active": user.get("is_active", True),
+        # Códigos específicos por rol
+        "administrator_code": user.get("administrator_code"),
+        "pathologist_code": user.get("pathologist_code"),
+        "resident_code": user.get("resident_code"),
+        "auxiliary_code": user.get("auxiliary_code"),
+        "billing_code": user.get("billing_code"),
+    }`}
+</CodeBlock>
+
+## Acceso a datos (AuthRepository)
+
+### Búsqueda por email
+
+<CodeBlock language="python">
+{`async def get_user_by_email(self, email: EmailStr) -> Optional[Dict[str, Any]]:
+    # Búsqueda case-insensitive para evitar problemas con mayúsculas/minúsculas
+    doc = await self.collection.find_one({
+        "email": {"$regex": f"^{email}$", "$options": "i"},
+        "is_active": True  # Solo usuarios activos
+    })
+    
+    if not doc:
+        return None
+    
+    # Convertir ObjectId a string para serialización
+    doc["_id"] = str(doc.get("_id", ""))
+    return doc`}
+</CodeBlock>
+
+### Búsqueda por ID
+
+<CodeBlock language="python">
+{`async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
+    try:
+        oid = ObjectId(user_id)  # Validar formato ObjectId
+    except Exception:
+        return None
+    
+    doc = await self.collection.find_one({
+        "_id": oid, 
+        "is_active": True  # Solo usuarios activos
+    })
+    
+    if not doc:
+        return None
+    
+    doc["_id"] = str(doc.get("_id", ""))
+    return doc`}
+</CodeBlock>
+
+## Seguridad y buenas prácticas
+
+### Manejo de errores
+
+- **Errores genéricos**: Se evita filtrar detalles internos como avisos de bcrypt
+- **Mensajes consistentes**: "Invalid credentials" para todos los fallos de autenticación
+- **Logging seguro**: No se registran contraseñas ni tokens en logs
+
+### Validaciones de seguridad
+
+- **Email case-insensitive**: Evita problemas de duplicados por mayúsculas
+- **Usuarios activos**: Solo se autentican usuarios con `is_active: true`
+- **Tokens seguros**: JWT con expiración configurable por entorno
+- **Hash robusto**: Argon2 por defecto con fallback a bcrypt
+
+### Configuración por entorno
+
+<CodeBlock language="python">
+{`# Desarrollo
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 horas
+
+# Producción  
+ACCESS_TOKEN_EXPIRE_MINUTES = 30   # 30 minutos
+
+# Configuración automática según ENVIRONMENT`}
+</CodeBlock>
+
+## Integración con otros módulos
+
+El módulo Auth proporciona las dependencias `get_current_user_id` y `get_current_user_id_optional` que son utilizadas por todos los demás módulos del sistema para:
+
+- **Autorización**: Verificar que el usuario tiene permisos para acceder a recursos
+- **Auditoría**: Registrar qué usuario realizó cada acción
+- **Personalización**: Mostrar contenido específico según el rol del usuario
+- **Seguridad**: Filtrar datos según los permisos del usuario autenticado

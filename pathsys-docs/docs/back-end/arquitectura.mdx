@@ -1,5 +1,182 @@
 ---
 id: arquitectura
-title: Arquitectura y router
+title: Arquitectura
 sidebar_position: 1
 ---
+
+import CodeBlock from '@theme/CodeBlock'
+
+## Objetivo y organización general
+
+<div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+  Esta sección detalla la arquitectura del Back-End de PathSys, construido con FastAPI y MongoDB. Aquí encontrarás la organización modular, patrones de diseño implementados, configuración de la base de datos y la estructura de endpoints de la API REST.
+</div>
+
+## Stack tecnológico
+
+<div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12}}>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Framework Principal</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>FastAPI 0.117.1 - Framework web moderno y rápido para APIs con validación automática y documentación OpenAPI.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Base de Datos</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>MongoDB con Motor (driver asíncrono) y PyMongo para operaciones síncronas en scripts.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Servidor ASGI</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Uvicorn con soporte estándar para WebSockets y HTTP/2.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Validación</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Pydantic 2.10.0 para validación de datos, serialización y configuración de settings.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Autenticación</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>JWT con python-jose, hashing con bcrypt/argon2, y validación de email.</div>
+  </div>
+  <div style={{background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 16}}>
+    <div style={{fontWeight: 600, color: '#374151'}}>Logging</div>
+    <div style={{fontSize: 13, color: '#6b7280', marginTop: 6}}>Loguru para logging estructurado y python-json-logger para formato JSON.</div>
+  </div>
+</div>
+
+## Arquitectura modular
+
+### Estructura de directorios
+
+<CodeBlock language="text">
+{`app/
+├── main.py                 # Punto de entrada de la aplicación
+├── config/                 # Configuración global
+│   ├── database.py        # Gestión de conexión MongoDB
+│   ├── settings.py        # Variables de entorno y configuración
+│   ├── security.py        # Configuración de seguridad y JWT
+│   └── logging_config.py  # Configuración de logging
+├── api/
+│   └── v1/
+│       └── router.py      # Router principal que agrupa todos los módulos
+├── modules/               # Módulos de dominio
+│   ├── auth/             # Autenticación y autorización
+│   ├── patients/         # Gestión de pacientes
+│   ├── cases/            # Gestión de casos clínicos
+│   ├── tests/            # Gestión de pruebas
+│   ├── pathologists/     # Gestión de patólogos
+│   ├── entities/         # Gestión de entidades
+│   ├── billing/          # Facturación
+│   ├── tickets/          # Sistema de tickets
+│   └── approvals/        # Aprobaciones
+├── shared/               # Código compartido
+│   ├── models/          # Modelos base y comunes
+│   ├── repositories/    # Repositorios base
+│   └── services/        # Servicios compartidos
+└── core/
+    └── exceptions.py    # Excepciones personalizadas`}
+</CodeBlock>
+
+### Patrón de arquitectura por módulos
+
+Cada módulo sigue una estructura consistente:
+
+<CodeBlock language="text">
+{`modules/[nombre_modulo]/
+├── models/              # Modelos Pydantic y de base de datos
+│   ├── __init__.py
+│   ├── [entity].py     # Modelo principal
+│   └── schemas.py      # Esquemas de request/response
+├── routes/             # Definición de endpoints
+│   ├── __init__.py
+│   └── [entity]_routes.py
+├── services/           # Lógica de negocio
+│   ├── __init__.py
+│   └── [entity]_service.py
+├── repositories/       # Acceso a datos
+│   ├── __init__.py
+│   └── [entity]_repository.py
+└── __init__.py`}
+</CodeBlock>
+
+## Router principal y endpoints
+
+El sistema utiliza un router jerárquico que organiza todos los endpoints bajo `/api/v1`:
+
+<CodeBlock language="python">
+{`# app/api/v1/router.py
+api_router = APIRouter()
+
+# Módulos implementados
+api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_router.include_router(patients_router, prefix="/patients", tags=["patients"])
+api_router.include_router(entities_router, prefix="/entities", tags=["entities"])
+api_router.include_router(tests_router, prefix="/tests", tags=["tests"])
+api_router.include_router(cases_router, prefix="/cases", tags=["cases"])
+api_router.include_router(pathologists_router, prefix="/pathologists", tags=["pathologists"])
+api_router.include_router(residents_router, prefix="/residents", tags=["residents"])
+api_router.include_router(auxiliaries_router, prefix="/auxiliaries", tags=["auxiliaries"])
+api_router.include_router(billing_router, prefix="/billing", tags=["billing"])
+api_router.include_router(diseases_router, prefix="/diseases", tags=["diseases"])
+api_router.include_router(tickets_router, prefix="/tickets", tags=["tickets"])
+api_router.include_router(approvals_router, prefix="/approvals", tags=["approvals"])`}
+</CodeBlock>
+
+### Endpoints de sistema
+
+- **`GET /health`** - Health check básico
+- **`GET /api/v1/health`** - Health check de la API con información detallada
+- **`GET /api/v1/info`** - Información de la API y módulos implementados
+
+## Gestión de base de datos
+
+### Configuración de conexión
+
+<CodeBlock language="python">
+{`class DatabaseManager:
+    def __init__(self):
+        self.client: Optional[AsyncIOMotorClient] = None
+        self.database: Optional[AsyncIOMotorDatabase] = None
+        self._connection_options = {
+            "serverSelectionTimeoutMS": 5000,
+            "connectTimeoutMS": 10000,
+            "socketTimeoutMS": 20000,
+            "maxPoolSize": 10,
+            "minPoolSize": 1,
+            "maxIdleTimeMS": 30000,
+            "retryWrites": True,
+            "retryReads": True
+        }`}
+</CodeBlock>
+
+### Patrón Repository
+
+Cada módulo implementa el patrón Repository para abstraer el acceso a datos:
+
+- **Base Repository**: Operaciones CRUD comunes
+- **Specific Repositories**: Operaciones específicas del dominio
+- **Async/Await**: Todas las operaciones de base de datos son asíncronas
+
+## Middleware y configuración
+
+### CORS
+Configurado para permitir conexiones desde el frontend local (puertos 5174 y 5175).
+
+### Archivos estáticos
+Montaje de directorio `/uploads` para servir firmas y documentos.
+
+### Manejo de excepciones
+- **RequestValidationError**: Errores de validación de Pydantic
+- **HTTPException**: Errores HTTP estándar
+- **Exception**: Manejo global de errores no controlados
+
+## Seguridad
+
+- **JWT Tokens**: Autenticación basada en tokens
+- **Password Hashing**: bcrypt y argon2 para hash de contraseñas
+- **CORS**: Configuración restrictiva para orígenes permitidos
+- **Validation**: Validación automática de datos con Pydantic
+
+## Scripts de importación
+
+Directorio `Scripts/` contiene utilidades para importación de datos:
+- Importación de pacientes, casos, patólogos
+- Importación de enfermedades (CIE-10, CIE-O)
+- Análisis de distribución de entidades y pruebas

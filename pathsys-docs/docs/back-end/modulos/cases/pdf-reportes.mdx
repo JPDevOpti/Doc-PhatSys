@@ -1,0 +1,362 @@
+# Generación de PDF y Reportes
+
+El submódulo de PDF maneja la generación de reportes oficiales y documentos para entrega a pacientes y entidades, utilizando plantillas HTML y conversión a PDF.
+
+## Objetivo
+
+Proporcionar funcionalidad completa para:
+- Generar reportes oficiales de casos
+- Crear documentos con formato profesional
+- Incluir firmas digitales de patólogos
+- Integrar pruebas complementarias
+- Producir archivos PDF listos para entrega
+
+## Estructura de Archivos
+
+```
+cases/
+├── routes/pdf_routes.py          # Endpoints para PDF
+├── services/pdf_service.py       # Lógica de generación
+├── templates/
+│   └── case_report.html         # Plantilla HTML principal
+└── static/                      # Recursos estáticos (CSS, imágenes)
+```
+
+## Endpoint Disponible
+
+### Generar PDF de Caso
+
+**GET** `/api/v1/cases/{case_code}/pdf`
+
+Genera un PDF del informe completo de resultados de un caso.
+
+#### Parámetros
+- **case_code** (path): Código del caso (ej: 2025-00001)
+
+#### Response
+- **Content-Type**: `application/pdf`
+- **Content-Disposition**: `inline; filename=caso-{case_code}.pdf`
+
+#### Códigos de Estado
+- **200**: PDF generado exitosamente
+- **404**: Caso no encontrado
+- **500**: Error en generación de PDF
+
+#### Ejemplo de Uso
+```bash
+# Descargar PDF directamente
+curl -o caso-2025-00001.pdf \
+  "http://localhost:8000/api/v1/cases/2025-00001/pdf"
+
+# Ver PDF en navegador
+GET /api/v1/cases/2025-00001/pdf
+```
+
+## Contenido del Reporte PDF
+
+### Información del Encabezado
+- Logo y datos de la institución
+- Información del laboratorio
+- Fecha y hora de generación
+- Código del caso
+
+### Datos del Paciente
+```
+- Nombre completo
+- Tipo y número de identificación
+- Edad y fecha de nacimiento
+- Género
+- Entidad de salud (EPS)
+- Tipo de atención
+- Ubicación (municipio, dirección)
+```
+
+### Información Clínica
+```
+- Médico solicitante
+- Servicio médico
+- Observaciones clínicas
+- Prioridad del caso
+```
+
+### Muestras y Pruebas
+```
+- Región corporal de la muestra
+- Tipos de pruebas realizadas
+- Cantidad de muestras
+- Métodos utilizados
+```
+
+### Resultados
+```
+- Resultado macroscópico
+- Resultado microscópico
+- Diagnóstico principal
+- Diagnósticos CIE-10 y CIE-O
+- Observaciones adicionales
+```
+
+### Pruebas Complementarias
+```
+- Pruebas pendientes de aprobación
+- Estado de aprobación
+- Observaciones específicas
+```
+
+### Información de Firma
+```
+- Nombre del patólogo
+- Código profesional
+- Firma digital (si disponible)
+- Fecha y hora de firma
+```
+
+## Lógica de Generación
+
+### CasePdfService
+
+#### Método Principal
+
+**`generate_case_pdf(case_code: str) -> bytes`**
+1. **Obtener datos del caso**: Consulta información completa
+2. **Obtener pruebas complementarias**: Busca aprobaciones pendientes
+3. **Obtener firma del patólogo**: Recupera firma digital
+4. **Renderizar template**: Procesa plantilla HTML con datos
+5. **Convertir a PDF**: Utiliza Playwright para conversión
+6. **Retornar bytes**: Devuelve PDF como stream de bytes
+
+#### Métodos de Apoyo
+
+**`_get_case_data(case_code: str) -> dict`**
+- Obtiene información completa del caso
+- Mapea datos para el template
+- Incluye validaciones de existencia
+
+**`_get_complementary_tests(case_code: str) -> dict`**
+- Busca pruebas complementarias pendientes
+- Obtiene estado de aprobaciones
+- Incluye observaciones específicas
+
+**`_get_pathologist_signature(case_data: dict) -> str`**
+- Recupera firma digital del patólogo
+- Valida existencia y formato
+- Retorna imagen en base64
+
+**`_map_samples(samples: list) -> list`**
+- Transforma datos de muestras para template
+- Agrupa pruebas por región corporal
+- Formatea información para visualización
+
+**`_map_result(result: dict) -> dict`**
+- Procesa resultados para template
+- Formatea diagnósticos CIE-10 y CIE-O
+- Incluye métodos y observaciones
+
+## Plantilla HTML
+
+### Estructura del Template
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Informe de Patología - {{ case.case_code }}</title>
+    <style>
+        /* Estilos CSS para formato profesional */
+    </style>
+</head>
+<body>
+    <!-- Encabezado institucional -->
+    <header>
+        <div class="logo">...</div>
+        <div class="institution-info">...</div>
+    </header>
+    
+    <!-- Información del caso -->
+    <section class="case-info">
+        <h2>Información del Caso</h2>
+        <p><strong>Código:</strong> {{ case.case_code }}</p>
+        <!-- Más campos... -->
+    </section>
+    
+    <!-- Datos del paciente -->
+    <section class="patient-info">
+        <h2>Datos del Paciente</h2>
+        <!-- Información del paciente -->
+    </section>
+    
+    <!-- Resultados -->
+    <section class="results">
+        <h2>Resultados</h2>
+        <!-- Resultados macro y microscópicos -->
+    </section>
+    
+    <!-- Firma -->
+    <footer class="signature">
+        <!-- Información del patólogo y firma -->
+    </footer>
+</body>
+</html>
+```
+
+### Variables del Template
+```jinja2
+{# Datos del caso #}
+{{ case.case_code }}
+{{ case.created_at }}
+{{ case.state }}
+{{ case.priority }}
+
+{# Información del paciente #}
+{{ case.patient_info.name }}
+{{ case.patient_info.identification_number }}
+{{ case.patient_info.age }}
+{{ case.patient_info.gender }}
+
+{# Resultados #}
+{{ case.result.macro_result }}
+{{ case.result.micro_result }}
+{{ case.result.diagnosis }}
+{{ case.result.cie10_diagnosis }}
+
+{# Firma del patólogo #}
+{{ pathologist_signature }}
+{{ case.assigned_pathologist.name }}
+{{ case.signed_at }}
+```
+
+## Tecnologías Utilizadas
+
+### Playwright
+- **Propósito**: Conversión HTML a PDF
+- **Configuración**: Chromium headless
+- **Ventajas**: Renderizado preciso, soporte CSS completo
+
+### Jinja2
+- **Propósito**: Motor de plantillas
+- **Características**: Renderizado asíncrono, auto-escape
+- **Ventajas**: Sintaxis clara, extensible
+
+### Configuración de Playwright
+```python
+async with async_playwright() as p:
+    browser = await p.chromium.launch(headless=True)
+    page = await browser.new_page()
+    await page.set_content(html)
+    pdf_bytes = await page.pdf(
+        format="A4",
+        margin={
+            "top": "1cm",
+            "bottom": "1cm", 
+            "left": "1cm",
+            "right": "1cm"
+        },
+        print_background=True
+    )
+    await browser.close()
+```
+
+## Validaciones y Controles
+
+### Validaciones Previas
+- **Existencia del caso**: Verificar que el caso existe
+- **Estado del caso**: Validar que tiene resultados
+- **Completitud**: Confirmar datos mínimos requeridos
+- **Permisos**: Verificar autorización para generar PDF
+
+### Control de Errores
+```python
+try:
+    pdf_bytes = await pdf_service.generate_case_pdf(case_code)
+    return StreamingResponse(...)
+except ValueError as e:
+    # Caso no encontrado
+    raise HTTPException(status_code=404, detail=str(e))
+except RuntimeError as e:
+    # Error de Playwright
+    raise HTTPException(status_code=500, detail=str(e))
+except Exception as e:
+    # Error general
+    raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
+```
+
+## Optimizaciones
+
+### Performance
+- **Cache de plantillas**: Jinja2 cache habilitado
+- **Reutilización de browser**: Pool de instancias Playwright
+- **Compresión**: PDF optimizado para tamaño
+- **Async/await**: Operaciones no bloqueantes
+
+### Memoria
+- **Streaming response**: No cargar PDF completo en memoria
+- **Cleanup automático**: Cierre de recursos Playwright
+- **Límites de tamaño**: Control de PDFs grandes
+
+## Configuración
+
+### Variables de Entorno
+```bash
+# Configuración de PDF
+PDF_TIMEOUT=30000  # Timeout en milisegundos
+PDF_FORMAT=A4
+PDF_MARGIN_TOP=1cm
+PDF_MARGIN_BOTTOM=1cm
+PDF_MARGIN_LEFT=1cm
+PDF_MARGIN_RIGHT=1cm
+
+# Configuración de Playwright
+PLAYWRIGHT_HEADLESS=true
+PLAYWRIGHT_BROWSER=chromium
+PLAYWRIGHT_TIMEOUT=30000
+
+# Configuración de plantillas
+TEMPLATES_CACHE=true
+TEMPLATES_AUTO_RELOAD=false
+```
+
+### Instalación de Dependencias
+```bash
+# Instalar Playwright
+pip install playwright
+
+# Instalar navegadores
+playwright install chromium
+
+# Verificar instalación
+playwright --version
+```
+
+## Integración con Otros Módulos
+
+### Casos
+- Obtiene información completa del caso
+- Valida estado y completitud
+- Accede a resultados y diagnósticos
+
+### Patólogos
+- Recupera información del especialista
+- Obtiene firma digital
+- Valida autorización para firma
+
+### Aprobaciones
+- Consulta pruebas complementarias
+- Obtiene estado de aprobaciones
+- Incluye observaciones específicas
+
+## Consideraciones de Seguridad
+
+### Control de Acceso
+- Validación de permisos para generar PDF
+- Verificación de estado del caso
+- Control de acceso a información sensible
+
+### Protección de Datos
+- No almacenamiento de PDFs generados
+- Sanitización de datos en templates
+- Logging de accesos a reportes
+
+### Auditoría
+- Registro de generación de PDFs
+- Tracking de descargas
+- Monitoreo de errores de generación

@@ -1,0 +1,116 @@
+# Colección: Patólogos
+
+## Descripción General
+La colección `pathologists` almacena la información de los patólogos del sistema, incluyendo datos profesionales, credenciales médicas, información de contacto y configuraciones específicas para el análisis de casos.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `pathologist_code` | String | Sí | Código único del patólogo |
+| `pathologist_name` | String | Sí | Nombre completo del patólogo |
+| `initials` | String | No | Iniciales del patólogo |
+| `pathologist_email` | String | Sí | Email único del patólogo |
+| `medical_license` | String | Sí | Número de licencia médica única |
+| `is_active` | Boolean | Sí | Estado activo/inactivo |
+| `signature_url` | String | No | URL de la firma digital |
+| `observations` | String | No | Notas adicionales |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Validaciones
+
+- **pathologist_code**: Único en el sistema, longitud máxima 11 caracteres
+- **pathologist_name**: Longitud mínima 1, máxima 100 caracteres
+- **pathologist_email**: Formato de email válido, único en el sistema
+- **medical_license**: Único en el sistema, longitud máxima 50 caracteres
+- **initials**: Longitud máxima 10 caracteres (opcional)
+- **observations**: Longitud máxima 500 caracteres (opcional)
+- **signature_url**: URL válida para la firma digital (opcional)
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de patólogo
+db.pathologists.createIndex({ "pathologist_code": 1 }, { unique: true })
+
+// Índice único para email
+db.pathologists.createIndex({ "pathologist_email": 1 }, { unique: true })
+
+// Índice único para licencia médica
+db.pathologists.createIndex({ "medical_license": 1 }, { unique: true })
+
+// Índice para búsquedas por nombre
+db.pathologists.createIndex({ "pathologist_name": "text" })
+
+// Índice para filtros por estado activo
+db.pathologists.createIndex({ "is_active": 1 })
+
+// Índice compuesto para búsquedas activas
+db.pathologists.createIndex({ 
+  "is_active": 1, 
+  "pathologist_name": 1 
+})
+```
+
+## Configuración Pydantic
+
+```python
+class Config:
+    json_encoders = {
+        datetime: lambda v: v.isoformat()
+    }
+    schema_extra = {
+        "example": {
+            "pathologist_code": "PATH001",
+            "pathologist_name": "Dr. Juan Pérez",
+            "initials": "JP",
+            "pathologist_email": "juan.perez@pathsys.com",
+            "medical_license": "MP123456",
+            "is_active": True,
+            "signature_url": "https://signatures.pathsys.com/jp.png",
+            "observations": "Especialista en patología oncológica"
+        }
+    }
+```
+
+## Relaciones
+
+- **Casos**: Los patólogos pueden ser asignados a múltiples casos
+- **Usuarios**: Cada patólogo puede tener credenciales de acceso al sistema
+- **Aprobaciones**: Los patólogos pueden aprobar o rechazar solicitudes
+- **Reportes**: Generación de reportes de productividad por patólogo
+
+## Casos de Uso Principales
+
+1. **Gestión de Patólogos**: Registro y mantenimiento de información profesional
+2. **Asignación de Casos**: Distribución automática o manual de casos
+3. **Autenticación**: Verificación de credenciales para acceso al sistema
+4. **Reportes de Productividad**: Análisis de casos procesados por patólogo
+5. **Gestión de Firmas**: Administración de firmas digitales para reportes
+6. **Control de Acceso**: Activación/desactivación de cuentas
+
+## Estados del Patólogo
+
+- **Activo**: Patólogo habilitado para recibir casos
+- **Inactivo**: Patólogo temporalmente deshabilitado
+- **Suspendido**: Patólogo con restricciones de acceso
+
+## Consideraciones de Seguridad
+
+- Los emails deben ser únicos y verificados
+- Las licencias médicas deben ser validadas externamente
+- Las firmas digitales deben almacenarse de forma segura
+- Implementar auditoría de cambios en información crítica
+- Controlar acceso a información sensible de patólogos
+
+## Consideraciones de Rendimiento
+
+- Mantener índices actualizados para búsquedas frecuentes
+- Implementar cache para patólogos activos
+- Optimizar consultas de asignación de casos
+- Considerar desnormalización para reportes frecuentes
+- Monitorear el uso de índices de texto para búsquedas por nombre

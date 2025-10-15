@@ -1,5 +1,514 @@
 ---
 id: mod-tickets
 title: Tickets
-sidebar_position: 5
+sidebar_position: 11
 ---
+
+# Módulo de Tickets
+
+## Objetivo
+
+El módulo de tickets gestiona el sistema de soporte técnico y atención al usuario en PathSys. Permite crear, gestionar y dar seguimiento a tickets de soporte que incluyen reportes de errores, solicitudes de funcionalidades, preguntas técnicas y consultas generales. El sistema proporciona un flujo completo de gestión de incidencias con categorización, estados, búsqueda avanzada y carga de imágenes para documentar problemas.
+
+## Estructura de Archivos
+
+```
+app/modules/tickets/
+├── __init__.py                          # Exports del módulo
+├── models/
+│   ├── __init__.py                     # Comentario de modelos
+│   ├── ticket.py                       # Modelo principal de tickets
+│   └── consecutive.py                  # Modelo de consecutivos
+├── routes/
+│   ├── __init__.py                     # Comentario de rutas
+│   └── ticket_routes.py                # Endpoints REST API
+├── services/
+│   ├── __init__.py                     # Exports de servicios
+│   └── ticket_service.py               # Lógica de negocio
+├── repositories/
+│   ├── __init__.py                     # Comentario de repositorios
+│   ├── ticket_repository.py            # Operaciones de base de datos
+│   └── consecutive_repository.py       # Generación de códigos consecutivos
+└── schemas/
+    ├── __init__.py                     # Exports de esquemas
+    └── ticket.py                       # Esquemas de validación
+```
+
+## Endpoints API
+
+### Crear Ticket de Soporte
+- **POST** `/tickets/`
+- **Descripción**: Crea un nuevo ticket de soporte técnico
+- **Request Body**: `TicketCreate`
+- **Response**: `TicketResponse` (201 Created)
+- **Autenticación**: Requerida
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 409: Conflicto en la creación
+  - 500: Error interno del servidor
+
+**Ejemplo de uso**:
+```json
+{
+    "title": "Error al generar reporte PDF",
+    "category": "bug",
+    "description": "El sistema no puede generar reportes PDF para casos con más de 10 muestras. Se muestra error 500.",
+    "image": "https://example.com/screenshot.jpg"
+}
+```
+
+### Listar Tickets
+- **GET** `/tickets/`
+- **Descripción**: Lista todos los tickets con paginación y ordenamiento
+- **Query Parameters**:
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 20, max: 100): Número máximo de registros
+  - `sort_by` (default: "ticket_date"): Campo para ordenar
+  - `sort_order` (default: "desc"): Orden ascendente o descendente
+- **Response**: `List[TicketListResponse]`
+- **Autenticación**: Requerida
+
+**Ejemplo**: `GET /tickets/?skip=0&limit=20&sort_by=ticket_date&sort_order=desc`
+
+### Buscar Tickets
+- **POST** `/tickets/search`
+- **Descripción**: Búsqueda avanzada de tickets con múltiples filtros
+- **Request Body**: `TicketSearch`
+- **Query Parameters**:
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 20, max: 100): Número máximo de registros
+  - `sort_by` (default: "ticket_date"): Campo para ordenar
+  - `sort_order` (default: "desc"): Orden ascendente o descendente
+- **Response**: `List[TicketListResponse]`
+- **Autenticación**: Requerida
+
+**Ejemplo de uso**:
+```json
+{
+    "status": "open",
+    "category": "bug",
+    "search_text": "PDF",
+    "date_from": "2025-01-01T00:00:00Z",
+    "date_to": "2025-01-31T23:59:59Z"
+}
+```
+
+### Contar Tickets
+- **GET** `/tickets/count`
+- **Descripción**: Cuenta el número total de tickets que coinciden con los filtros
+- **Query Parameters**: Mismos que `TicketSearch`
+- **Response**: `{"total": integer}`
+- **Autenticación**: Requerida
+
+### Obtener Ticket por Código
+- **GET** `/tickets/{ticket_code}`
+- **Descripción**: Obtiene un ticket específico por su código único
+- **Path Parameters**:
+  - `ticket_code`: Código único del ticket (formato: T-YYYY-NNN)
+- **Response**: `TicketResponse`
+- **Autenticación**: Requerida
+- **Errores**:
+  - 404: Ticket no encontrado
+
+**Ejemplo**: `GET /tickets/T-2025-001`
+
+### Actualizar Ticket (Admin)
+- **PUT** `/tickets/{ticket_code}`
+- **Descripción**: Actualiza completamente un ticket existente (solo administradores)
+- **Path Parameters**:
+  - `ticket_code`: Código único del ticket
+- **Request Body**: `TicketUpdate`
+- **Response**: `TicketResponse`
+- **Autenticación**: Requerida (Admin)
+- **Errores**:
+  - 400: Datos de entrada inválidos
+  - 404: Ticket no encontrado
+
+### Cambiar Estado del Ticket (Admin)
+- **PATCH** `/tickets/{ticket_code}/status`
+- **Descripción**: Cambia únicamente el estado de un ticket (solo administradores)
+- **Path Parameters**:
+  - `ticket_code`: Código único del ticket
+- **Request Body**: `TicketStatusUpdate`
+- **Response**: `TicketResponse`
+- **Autenticación**: Requerida (Admin)
+
+**Ejemplo de uso**:
+```json
+{
+    "status": "resolved"
+}
+```
+
+### Eliminar Ticket (Admin)
+- **DELETE** `/tickets/{ticket_code}`
+- **Descripción**: Elimina un ticket del sistema (solo administradores)
+- **Path Parameters**:
+  - `ticket_code`: Código único del ticket
+- **Response**: `{"success": boolean, "message": string}`
+- **Autenticación**: Requerida (Admin)
+- **Errores**:
+  - 404: Ticket no encontrado
+
+### Subir Imagen
+- **POST** `/tickets/upload-image`
+- **Descripción**: Sube una imagen para adjuntar a un ticket
+- **Request Body**: Archivo de imagen (multipart/form-data)
+- **Response**: `ImageUploadResponse`
+- **Autenticación**: Requerida
+- **Límites**:
+  - Tamaño máximo: 5MB
+  - Formatos soportados: JPG, PNG, GIF
+
+## Esquemas de Datos
+
+### TicketCreate
+Esquema para crear tickets de soporte:
+```python
+{
+    "title": "string",                           # Título del ticket (1-100 chars)
+    "category": "TicketCategoryEnum",            # Categoría del ticket
+    "description": "string",                     # Descripción detallada (1-500 chars)
+    "image": "string"                            # URL de imagen adjunta (opcional)
+}
+```
+
+### TicketUpdate
+Esquema para actualizar tickets:
+```python
+{
+    "title": "string",                           # Título opcional (1-100 chars)
+    "category": "TicketCategoryEnum",            # Categoría opcional
+    "description": "string",                     # Descripción opcional (1-500 chars)
+    "image": "string",                           # URL de imagen opcional
+    "status": "TicketStatusEnum"                 # Estado opcional
+}
+```
+
+### TicketResponse
+Esquema de respuesta completa para tickets:
+```python
+{
+    "ticket_code": "string",                     # Código único (T-YYYY-NNN)
+    "title": "string",                           # Título del ticket
+    "category": "TicketCategoryEnum",            # Categoría del ticket
+    "description": "string",                     # Descripción detallada
+    "image": "string",                           # URL de imagen adjunta (opcional)
+    "ticket_date": "datetime",                   # Fecha de creación del ticket
+    "status": "TicketStatusEnum",                # Estado actual
+    "created_by": "string"                       # ID del usuario creador (opcional)
+}
+```
+
+### TicketListResponse
+Esquema compacto para listados de tickets:
+```python
+{
+    "ticket_code": "string",                     # Código único del ticket
+    "title": "string",                           # Título del ticket
+    "category": "TicketCategoryEnum",            # Categoría del ticket
+    "description": "string",                     # Descripción breve
+    "status": "TicketStatusEnum",                # Estado actual
+    "image": "string",                           # URL de imagen (opcional)
+    "ticket_date": "datetime"                    # Fecha de creación
+}
+```
+
+### TicketSearch
+Esquema para búsqueda avanzada de tickets:
+```python
+{
+    "status": "TicketStatusEnum",                # Filtro por estado (opcional)
+    "category": "TicketCategoryEnum",            # Filtro por categoría (opcional)
+    "created_by": "string",                      # Filtro por creador (opcional)
+    "search_text": "string",                     # Búsqueda en título y descripción
+    "date_from": "datetime",                     # Fecha desde (opcional)
+    "date_to": "datetime"                        # Fecha hasta (opcional)
+}
+```
+
+### TicketStatusUpdate
+Esquema para cambio de estado únicamente:
+```python
+{
+    "status": "TicketStatusEnum"                 # Nuevo estado del ticket
+}
+```
+
+### ImageUploadResponse
+Esquema de respuesta para carga de imágenes:
+```python
+{
+    "image_url": "string",                       # URL de la imagen subida
+    "message": "string"                          # Mensaje de confirmación
+}
+```
+
+## Categorías de Tickets (TicketCategoryEnum)
+
+1. **`bug`**: Reporte de errores o fallos del sistema
+2. **`feature`**: Solicitud de nuevas funcionalidades
+3. **`question`**: Preguntas sobre el uso del sistema
+4. **`technical`**: Consultas técnicas especializadas
+
+## Estados de Tickets (TicketStatusEnum)
+
+1. **`open`**: Ticket abierto, esperando atención
+2. **`in-progress`**: Ticket en proceso de resolución
+3. **`resolved`**: Ticket resuelto, esperando confirmación
+4. **`closed`**: Ticket cerrado definitivamente
+
+## Lógica de Negocio (TicketService)
+
+### Funcionalidades Principales
+
+1. **Creación de Tickets**:
+   - Generación automática de código único (T-YYYY-NNN)
+   - Validación de datos de entrada
+   - Asignación automática del usuario creador
+   - Estado inicial: `open`
+   - Timestamps automáticos
+
+2. **Gestión de Estados**:
+   - Transición controlada entre estados
+   - Validación de permisos para cambios de estado
+   - Actualización automática de timestamps
+   - Registro de cambios de estado
+
+3. **Búsqueda y Filtrado**:
+   - Búsqueda de texto en título y descripción
+   - Filtrado por estado, categoría y creador
+   - Filtrado por rango de fechas
+   - Paginación configurable
+   - Ordenamiento personalizable
+
+4. **Gestión de Imágenes**:
+   - Carga de imágenes adjuntas
+   - Validación de formato y tamaño
+   - Almacenamiento seguro
+   - URLs de acceso público
+
+5. **Estadísticas y Conteo**:
+   - Conteo de tickets por filtros
+   - Métricas de rendimiento
+   - Estadísticas por categoría y estado
+
+### Integración con Otros Módulos
+
+El servicio de tickets se integra con:
+- **Módulo de Autenticación**: Validación de usuarios y permisos
+- **Sistema de Archivos**: Almacenamiento de imágenes adjuntas
+- **Módulo de Notificaciones**: Alertas sobre cambios de estado
+- **Sistema de Consecutivos**: Generación de códigos únicos
+
+## Operaciones de Repositorio (TicketRepository)
+
+### Métodos Principales
+
+- `create(ticket_data)`: Crea nuevo ticket con timestamps automáticos
+- `get_by_ticket_code(code)`: Busca ticket por código único
+- `search_tickets(search_params, skip, limit, sort_by, sort_order)`: Búsqueda avanzada
+- `count_tickets(search_params)`: Cuenta tickets que coinciden con filtros
+- `list_all_tickets(skip, limit, sort_by, sort_order)`: Lista todos los tickets
+- `update_by_ticket_code(code, data)`: Actualiza datos del ticket
+- `delete_by_ticket_code(code)`: Elimina ticket por código
+
+### Características Técnicas
+
+- **Índices Únicos**: Código de ticket para búsquedas rápidas
+- **Búsqueda de Texto**: Índices en título y descripción
+- **Conversión de ObjectId**: Transformación automática de `_id` a `id` string
+- **Limpieza de Campos**: Eliminación de campos internos no deseados
+- **Paginación Eficiente**: Uso optimizado de `skip` y `limit`
+- **Ordenamiento Flexible**: Soporte para múltiples criterios de ordenamiento
+
+## Generación de Códigos Consecutivos (ConsecutiveTicketRepository)
+
+### Funcionalidades
+
+- **Códigos Únicos**: Formato T-YYYY-NNN (ejemplo: T-2025-001)
+- **Consecutivos por Año**: Numeración independiente por año
+- **Operaciones Atómicas**: Incremento seguro con `find_one_and_update`
+- **Previsualización**: Método para ver el siguiente número sin incrementar
+- **Inicialización Automática**: Creación automática de contadores por año
+- **Estadísticas**: Métricas de uso de consecutivos
+
+### Métodos Principales
+
+- `get_next_number(year)`: Obtiene e incrementa el siguiente número
+- `get_next_number_preview(year)`: Previsualiza el siguiente número
+- `generate_ticket_code(year)`: Genera código completo de ticket
+- `get_consecutive_statistics()`: Obtiene estadísticas de consecutivos
+- `reset_consecutive_year(year, number)`: Reinicia contador de año específico
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+
+1. **Título del Ticket**:
+   - Campo requerido
+   - Longitud entre 1 y 100 caracteres
+   - No puede estar vacío o solo espacios
+
+2. **Descripción**:
+   - Campo requerido
+   - Longitud entre 1 y 500 caracteres
+   - No puede estar vacía o solo espacios
+
+3. **Categoría**:
+   - Debe ser una de las categorías válidas
+   - Campo requerido en creación
+
+4. **Estado**:
+   - Debe ser uno de los estados válidos
+   - Transiciones controladas por permisos
+
+5. **Imagen**:
+   - Formato válido (JPG, PNG, GIF)
+   - Tamaño máximo de 5MB
+   - URL válida si se proporciona
+
+### Manejo de Errores
+
+- **BadRequestError (400)**: Datos de entrada inválidos
+- **NotFoundError (404)**: Ticket no encontrado
+- **ConflictError (409)**: Conflicto en la creación o actualización
+- **Internal Server Error (500)**: Errores no controlados
+- **Validation Error (422)**: Errores de validación de Pydantic
+
+## Flujo de Trabajo Típico
+
+### 1. Creación de Ticket
+```
+Usuario → Crear ticket → Validar datos → Generar código → Guardar ticket → Notificar
+```
+
+### 2. Gestión de Ticket
+```
+Ticket abierto → Asignar → En progreso → Resolver → Cerrar
+```
+
+### 3. Búsqueda y Seguimiento
+```
+Buscar tickets → Aplicar filtros → Ordenar resultados → Paginar → Mostrar
+```
+
+## Integración con Otros Módulos
+
+### Módulos Relacionados
+
+1. **Autenticación**: Control de acceso y permisos de usuario
+2. **Archivos**: Gestión de imágenes adjuntas
+3. **Notificaciones**: Alertas sobre cambios de estado
+4. **Reportes**: Estadísticas y métricas de tickets
+5. **Usuarios**: Información del creador del ticket
+
+### Consideraciones de Integración
+
+- Los códigos de ticket deben ser estables y únicos
+- Las imágenes deben almacenarse de forma segura
+- Los cambios de estado deben notificarse apropiadamente
+- La eliminación debe considerar las dependencias
+- Mantenimiento de integridad referencial
+
+## Optimizaciones de Base de Datos
+
+### Índices Recomendados
+
+```javascript
+// MongoDB indexes
+db.tickets.createIndex({ "ticket_code": 1 }, { unique: true })
+db.tickets.createIndex({ "status": 1 })
+db.tickets.createIndex({ "category": 1 })
+db.tickets.createIndex({ "created_by": 1 })
+db.tickets.createIndex({ "ticket_date": -1 })
+db.tickets.createIndex({ "title": "text", "description": "text" })
+
+// Índices para contadores
+db.consecutive_tickets.createIndex({ "year": 1 }, { unique: true })
+```
+
+### Consideraciones de Rendimiento
+
+- Búsquedas optimizadas con índices específicos
+- Índices de texto para búsqueda en título y descripción
+- Paginación eficiente para listados grandes
+- Límites de consulta para prevenir sobrecarga
+- Índices únicos para prevenir duplicados
+- Operaciones atómicas para contadores
+
+## Variables de Configuración
+
+El módulo utiliza las siguientes configuraciones del sistema:
+
+- **TICKETS_UPLOAD_DIR**: Directorio para almacenar imágenes (default: `/tmp/uploads/tickets/images`)
+- **TICKETS_MAX_IMAGE_SIZE**: Tamaño máximo de imagen en bytes (default: 5242880 = 5MB)
+- **Database Connection**: Conexión a MongoDB
+- **Authentication**: Configuración de autenticación y autorización
+- **File Storage**: Configuración de almacenamiento de archivos
+
+## Casos de Uso Comunes
+
+### 1. Reportar un Error
+```python
+# Crear ticket para reporte de error
+ticket_data = {
+    "title": "Error al generar reporte PDF",
+    "category": "bug",
+    "description": "El sistema falla al generar PDFs con más de 10 muestras",
+    "image": "https://example.com/screenshot.jpg"
+}
+```
+
+### 2. Solicitar Nueva Funcionalidad
+```python
+# Crear ticket para solicitud de funcionalidad
+ticket_data = {
+    "title": "Exportar datos a Excel",
+    "category": "feature",
+    "description": "Necesitamos poder exportar los reportes de casos a formato Excel"
+}
+```
+
+### 3. Buscar Tickets por Estado
+```python
+# Buscar tickets abiertos
+search_params = {
+    "status": "open",
+    "date_from": "2025-01-01T00:00:00Z"
+}
+```
+
+### 4. Gestionar Estado de Ticket
+```python
+# Cambiar estado a resuelto
+status_update = {
+    "status": "resolved"
+}
+```
+
+### 5. Obtener Estadísticas
+```python
+# Contar tickets por categoría
+search_params = {
+    "category": "bug"
+}
+count = await service.count_tickets(search_params)
+```
+
+## Características Técnicas Destacadas
+
+- **Códigos Únicos**: Sistema de códigos consecutivos por año (T-YYYY-NNN)
+- **Categorización Flexible**: Múltiples categorías para organizar tickets
+- **Estados Controlados**: Flujo de estados bien definido para seguimiento
+- **Búsqueda Avanzada**: Múltiples criterios de filtrado y búsqueda de texto
+- **Carga de Imágenes**: Soporte para adjuntar capturas de pantalla
+- **Paginación Eficiente**: Listados optimizados con ordenamiento personalizable
+- **Validaciones Robustas**: Prevención de datos inválidos y duplicados
+- **Timestamps Automáticos**: Control de fechas de creación y actualización
+- **Operaciones Atómicas**: Generación segura de códigos consecutivos
+- **Manejo de Errores Robusto**: Control completo de excepciones
+- **Integración Completa**: Sincronización con autenticación y notificaciones
+- **Estadísticas en Tiempo Real**: Métricas de uso y rendimiento
+
+El módulo de tickets proporciona un sistema completo de soporte técnico para PathSys, con funcionalidades robustas de CRUD, gestión de estados, búsqueda avanzada, carga de archivos y estadísticas en tiempo real, asegurando una experiencia eficiente para la gestión de incidencias y soporte al usuario.

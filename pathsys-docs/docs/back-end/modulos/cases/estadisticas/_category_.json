@@ -1,0 +1,8 @@
+{
+  "label": "Estadísticas",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "description": "Documentación completa del submódulo de estadísticas, incluyendo dashboard, análisis por entidades, oportunidad, patólogos y pruebas."
+  }
+}

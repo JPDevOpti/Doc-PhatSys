@@ -1,0 +1,248 @@
+---
+id: import-administrators
+title: Import Administrators
+sidebar_position: 1
+---
+
+# Script de Importación de Administradores
+
+El script `import_administrators.py` es responsable de crear usuarios administradores del sistema PathSys con credenciales predefinidas. Este script es fundamental para la inicialización del sistema, ya que establece los usuarios con privilegios administrativos necesarios para la gestión de la plataforma.
+
+## Objetivo
+
+Crear usuarios administradores del sistema con roles y permisos completos para la gestión de PathSys, incluyendo la configuración inicial y administración de otros usuarios.
+
+## Ubicación del Archivo
+
+```
+Back-End/Scripts/import_administrators.py
+```
+
+## Funcionalidad Principal
+
+### Creación de Administradores
+El script crea usuarios administradores con la siguiente información:
+
+- **Datos personales**: Nombre completo, email, identificación
+- **Credenciales**: Contraseñas predefinidas (deben cambiarse en producción)
+- **Roles**: Permisos administrativos completos
+- **Estado**: Usuarios activos por defecto
+
+### Administradores Predefinidos
+
+El script incluye los siguientes administradores:
+
+```python
+administrators = [
+    {
+        "name": "Administrator",
+        "email": "admin@pathsys.com",
+        "identification": "1000000001",
+        "password": "admin123"  # Cambiar en producción
+    },
+    {
+        "name": "System Admin",
+        "email": "system@pathsys.com", 
+        "identification": "1000000002",
+        "password": "system123"  # Cambiar en producción
+    },
+    {
+        "name": "Super User",
+        "email": "super@pathsys.com",
+        "identification": "1000000003", 
+        "password": "super123"  # Cambiar en producción
+    }
+]
+```
+
+## Dependencias y Servicios
+
+### Servicios Utilizados
+- **`UserManagementService`**: Servicio principal para gestión de usuarios
+- **`get_user_management_service()`**: Factory para obtener instancia del servicio
+
+### Esquemas de Datos
+- **`AdministratorCreate`**: Schema Pydantic para validación de datos de administradores
+
+### Importaciones Principales
+```python
+from app.modules.users.services.user_management_service import get_user_management_service
+from app.modules.users.schemas.administrator import AdministratorCreate
+```
+
+## Estructura del Script
+
+### 1. Configuración Inicial
+```python
+import asyncio
+from typing import List
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+```
+
+### 2. Definición de Datos
+```python
+# Predefined administrator data
+ADMINISTRATORS_DATA = [
+    {
+        "name": "Administrator",
+        "email": "admin@pathsys.com",
+        "identification": "1000000001",
+        "password": "admin123"
+    },
+    # ... more administrators
+]
+```
+
+### 3. Función Principal
+```python
+async def import_administrators():
+    """Import predefined administrators into the system"""
+    service = get_user_management_service()
+    
+    for admin_data in ADMINISTRATORS_DATA:
+        try:
+            # Create administrator schema
+            admin_create = AdministratorCreate(**admin_data)
+            
+            # Check if administrator already exists
+            existing = await service.get_user_by_email(admin_data["email"])
+            if existing:
+                logger.info(f"Administrator {admin_data['email']} already exists")
+                continue
+            
+            # Create new administrator
+            result = await service.create_administrator(admin_create)
+            logger.info(f"Created administrator: {result.email}")
+            
+        except Exception as e:
+            logger.error(f"Error creating administrator {admin_data['email']}: {e}")
+```
+
+## Características Técnicas
+
+### 🔒 Validaciones
+- **Email único**: Verificación de emails no duplicados
+- **Identificación única**: Control de números de identificación
+- **Formato de datos**: Validación mediante schemas Pydantic
+- **Existencia previa**: Verificación antes de crear
+
+### 🛡️ Seguridad
+- **Contraseñas hasheadas**: Almacenamiento seguro de contraseñas
+- **Validación de entrada**: Sanitización de datos de entrada
+- **Manejo de errores**: Control robusto de excepciones
+- **Logging seguro**: Registro sin exponer credenciales
+
+### ⚡ Rendimiento
+- **Operaciones asíncronas**: Procesamiento no bloqueante
+- **Verificación previa**: Evita duplicados innecesarios
+- **Transacciones atómicas**: Consistencia de datos
+- **Logging eficiente**: Registro optimizado de operaciones
+
+## Uso del Script
+
+### Ejecución Básica
+```bash
+# Desde el directorio raíz del proyecto
+python3 Scripts/import_administrators.py
+```
+
+### Ejecución con Logging Detallado
+```bash
+# Con nivel de logging DEBUG
+PYTHONPATH=. python3 Scripts/import_administrators.py --verbose
+```
+
+### Verificación de Resultados
+```bash
+# Verificar administradores creados
+python3 -c "
+from app.modules.users.services.user_management_service import get_user_management_service
+import asyncio
+
+async def check_admins():
+    service = get_user_management_service()
+    admins = await service.list_administrators()
+    print(f'Total administrators: {len(admins)}')
+    for admin in admins:
+        print(f'- {admin.name} ({admin.email})')
+
+asyncio.run(check_admins())
+"
+```
+
+## Casos de Uso
+
+### 1. Inicialización del Sistema
+```python
+# Primera configuración del sistema
+await import_administrators()
+print("Sistema inicializado con administradores")
+```
+
+### 2. Restauración de Administradores
+```python
+# Después de reset de base de datos
+await import_administrators()
+print("Administradores restaurados")
+```
+
+### 3. Adición de Nuevos Administradores
+```python
+# Modificar ADMINISTRATORS_DATA y ejecutar
+new_admin = {
+    "name": "New Admin",
+    "email": "newadmin@pathsys.com",
+    "identification": "1000000004",
+    "password": "newadmin123"
+}
+ADMINISTRATORS_DATA.append(new_admin)
+```
+
+## Consideraciones Importantes
+
+### 🚨 Seguridad en Producción
+- **Cambiar contraseñas**: Las contraseñas predefinidas DEBEN cambiarse
+- **Emails corporativos**: Usar emails del dominio de la organización
+- **Identificaciones reales**: Usar números de identificación válidos
+- **Acceso restringido**: Limitar quién puede ejecutar este script
+
+### 🔧 Configuración Recomendada
+- **Variables de entorno**: Usar para contraseñas en producción
+- **Archivo de configuración**: Externalizar datos de administradores
+- **Validación adicional**: Implementar reglas de negocio específicas
+- **Auditoría**: Registrar creación de administradores
+
+### 📋 Requisitos Previos
+- Base de datos MongoDB configurada y accesible
+- Servicios de usuarios inicializados
+- Dependencias de Python instaladas
+- Variables de entorno configuradas
+
+### ⚠️ Limitaciones
+- Contraseñas en texto plano en el código (solo para desarrollo)
+- Datos hardcodeados (considerar externalizar)
+- Sin validación de políticas de contraseñas complejas
+- Sin notificación automática a administradores creados
+
+## Integración con Otros Módulos
+
+### Módulo de Usuarios
+- Utiliza `UserManagementService` para operaciones CRUD
+- Implementa schemas de validación de usuarios
+- Integra con sistema de autenticación y autorización
+
+### Módulo de Autenticación
+- Los administradores creados pueden autenticarse inmediatamente
+- Roles y permisos se asignan automáticamente
+- Integración con JWT y sesiones
+
+### Módulo de Auditoría
+- Registra la creación de administradores
+- Mantiene historial de cambios
+- Facilita trazabilidad de operaciones administrativas
+
+Este script es esencial para el funcionamiento inicial de PathSys, proporcionando los usuarios administrativos necesarios para la gestión completa del sistema.

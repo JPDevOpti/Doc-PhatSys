@@ -1,0 +1,246 @@
+# Colección: Enfermedades
+
+## Descripción General
+La colección `diseases` almacena el catálogo de enfermedades y condiciones médicas utilizadas en el sistema PathSys, basado en clasificaciones internacionales como CIE-10 y otros sistemas de codificación médica.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `table` | String | Sí | Tabla de referencia (ej: CIE10, SNOMED) |
+| `code` | String | Sí | Código de la enfermedad |
+| `name` | String | Sí | Nombre de la enfermedad |
+| `description` | String | No | Descripción general de la enfermedad |
+| `is_active` | Boolean | Sí | Estado activo/inactivo |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Validaciones
+
+- **table**: Referencia a tabla de clasificación médica válida
+- **code**: Código único dentro de la tabla de referencia
+- **name**: Nombre descriptivo de la enfermedad, no puede estar vacío
+- **description**: Descripción opcional, máximo 1000 caracteres
+- **is_active**: Estado booleano, por defecto `true`
+
+## Índices Recomendados
+
+```javascript
+// Índice compuesto único para tabla y código
+db.diseases.createIndex({ "table": 1, "code": 1 }, { unique: true })
+
+// Índice para búsquedas por nombre
+db.diseases.createIndex({ "name": "text" })
+
+// Índice para filtros por tabla
+db.diseases.createIndex({ "table": 1 })
+
+// Índice para filtros por estado activo
+db.diseases.createIndex({ "is_active": 1 })
+
+// Índice compuesto para búsquedas activas por tabla
+db.diseases.createIndex({ 
+  "table": 1, 
+  "is_active": 1,
+  "name": 1 
+})
+```
+
+## Esquemas de Operación
+
+### DiseaseCreateSchema
+```python
+class DiseaseCreateSchema(BaseModel):
+    table: str = Field(..., description="Reference table (e.g., CIE10)")
+    code: str = Field(..., description="Disease code")
+    name: str = Field(..., description="Disease name")
+    description: Optional[str] = Field(None, description="General description")
+    is_active: bool = Field(True, description="Active state")
+```
+
+### DiseaseResponseSchema
+```python
+class DiseaseResponseSchema(BaseModel):
+    id: str = Field(..., description="Disease ID")
+    table: str = Field(..., description="Reference table")
+    code: str = Field(..., description="Disease code")
+    name: str = Field(..., description="Disease name")
+    description: Optional[str] = Field(None, description="Description")
+    is_active: bool = Field(..., description="Active state")
+    created_at: datetime = Field(..., description="Creation date")
+    updated_at: datetime = Field(..., description="Last update date")
+```
+
+### DiseaseSearchResponseSchema
+```python
+class DiseaseSearchResponseSchema(BaseModel):
+    diseases: List[DiseaseResponseSchema] = Field(..., description="Found diseases")
+    search_term: str = Field(..., description="Search term used")
+    skip: int = Field(..., description="Elements skipped")
+    limit: int = Field(..., description="Elements per page")
+```
+
+## Tablas de Referencia Soportadas
+
+### CIE-10 (Clasificación Internacional de Enfermedades)
+- **Descripción**: Clasificación estándar de la OMS
+- **Formato de Código**: Alfanumérico (ej: A00.0, B15.9, C78.1)
+- **Uso**: Diagnósticos principales y secundarios
+
+### SNOMED CT
+- **Descripción**: Terminología clínica sistemática
+- **Formato de Código**: Numérico (ej: 386661006, 233604007)
+- **Uso**: Terminología detallada para patología
+
+### ICD-O-3 (Oncología)
+- **Descripción**: Clasificación específica para tumores
+- **Formato de Código**: Morfología + Comportamiento (ej: 8140/3)
+- **Uso**: Clasificación de neoplasias
+
+### Clasificaciones Locales
+- **Descripción**: Códigos específicos de la institución
+- **Formato de Código**: Definido por la institución
+- **Uso**: Condiciones específicas no cubiertas por estándares
+
+## Ejemplos de Registros
+
+### CIE-10
+```json
+{
+  "_id": "ObjectId(...)",
+  "table": "CIE10",
+  "code": "C78.1",
+  "name": "Metástasis maligna en pulmón",
+  "description": "Tumor secundario localizado en tejido pulmonar",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+### SNOMED CT
+```json
+{
+  "_id": "ObjectId(...)",
+  "table": "SNOMED",
+  "code": "386661006",
+  "name": "Fever",
+  "description": "Elevated body temperature above normal range",
+  "is_active": true,
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
+}
+```
+
+## Relaciones
+
+- **Casos**: Las enfermedades se asocian a casos como diagnósticos
+- **Reportes**: Utilizado en la generación de reportes patológicos
+- **Estadísticas**: Base para análisis epidemiológicos
+- **Aprobaciones**: Referencia en solicitudes de pruebas complementarias
+
+## Casos de Uso Principales
+
+1. **Catálogo de Diagnósticos**: Mantenimiento del catálogo de enfermedades
+2. **Búsqueda de Códigos**: Localización rápida de códigos por nombre o descripción
+3. **Validación de Diagnósticos**: Verificación de códigos válidos en reportes
+4. **Reportes Epidemiológicos**: Análisis de frecuencia de diagnósticos
+5. **Integración con Estándares**: Sincronización con clasificaciones internacionales
+6. **Auditoría Médica**: Verificación de codificación correcta
+
+## Operaciones de Búsqueda
+
+### Búsqueda por Texto
+```python
+def search_diseases(search_term: str, table: str = None):
+    query = {
+        "$text": {"$search": search_term},
+        "is_active": True
+    }
+    if table:
+        query["table"] = table
+    
+    return db.diseases.find(query).sort([("score", {"$meta": "textScore"})])
+```
+
+### Búsqueda por Tabla
+```python
+def get_diseases_by_table(table: str, skip: int = 0, limit: int = 100):
+    return db.diseases.find({
+        "table": table,
+        "is_active": True
+    }).skip(skip).limit(limit).sort("name", 1)
+```
+
+### Búsqueda por Código
+```python
+def get_disease_by_code(table: str, code: str):
+    return db.diseases.find_one({
+        "table": table,
+        "code": code,
+        "is_active": True
+    })
+```
+
+## Consideraciones de Actualización
+
+### Sincronización con Estándares
+- Actualización periódica desde fuentes oficiales
+- Validación de cambios en códigos existentes
+- Manejo de códigos obsoletos o reemplazados
+- Preservación de historial de cambios
+
+### Migración de Datos
+```python
+def migrate_disease_codes(old_code: str, new_code: str, table: str):
+    # Actualizar código en la colección de enfermedades
+    db.diseases.update_one(
+        {"table": table, "code": old_code},
+        {"$set": {"code": new_code, "updated_at": datetime.utcnow()}}
+    )
+    
+    # Actualizar referencias en casos existentes
+    db.cases.update_many(
+        {"diagnosis_codes.table": table, "diagnosis_codes.code": old_code},
+        {"$set": {"diagnosis_codes.$.code": new_code}}
+    )
+```
+
+## Consideraciones de Rendimiento
+
+- Implementar índices de texto para búsquedas rápidas
+- Cache para enfermedades frecuentemente consultadas
+- Optimizar consultas por tabla y estado activo
+- Considerar particionamiento por tabla para grandes volúmenes
+- Monitorear el uso de búsquedas de texto
+
+## Consideraciones de Calidad de Datos
+
+- Validación de códigos contra estándares oficiales
+- Verificación de duplicados entre tablas
+- Normalización de nombres y descripciones
+- Auditoría de cambios en códigos críticos
+- Mantenimiento de integridad referencial
+
+## Integración con APIs Externas
+
+### Validación de Códigos CIE-10
+```python
+async def validate_icd10_code(code: str):
+    # Integración con API oficial de la OMS
+    response = await external_api.validate_icd10(code)
+    return response.is_valid
+```
+
+### Sincronización SNOMED CT
+```python
+async def sync_snomed_updates():
+    # Obtener actualizaciones desde SNOMED International
+    updates = await snomed_api.get_updates(last_sync_date)
+    
+    for update in updates:
+        await update_disease_record(update)
+```

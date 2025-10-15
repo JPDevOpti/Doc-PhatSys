@@ -1,0 +1,379 @@
+---
+id: import-diseases
+title: Import Diseases
+sidebar_position: 4
+---
+
+# Scripts de Importación de Enfermedades
+
+Los scripts `import_diseases.py` e `import_cancer_diseases.py` son responsables de importar los catálogos médicos CIE-10 (Clasificación Internacional de Enfermedades) y CIE-O (Clasificación Internacional de Enfermedades para Oncología) respectivamente. Estos scripts procesan archivos Excel con información médica estandarizada y la cargan en la base de datos de PathSys.
+
+## Objetivo
+
+Poblar el sistema con catálogos médicos estandarizados internacionalmente para la clasificación de enfermedades generales (CIE-10) y enfermedades oncológicas (CIE-O), proporcionando una base sólida para diagnósticos patológicos precisos.
+
+## Ubicación de los Archivos
+
+```
+Back-End/Scripts/import_diseases.py
+Back-End/Scripts/import_cancer_diseases.py
+Back-End/Scripts/CIE-10.xlsx
+Back-End/Scripts/CIE-O.xlsx
+```
+
+## Script: import_diseases.py
+
+### Funcionalidad Principal
+
+#### Importación de CIE-10
+El script procesa el archivo `CIE-10.xlsx` e importa:
+
+- **Códigos CIE-10**: Códigos alfanuméricos estándar (ej: A00.0, B15.9)
+- **Nombres de enfermedades**: Denominaciones oficiales
+- **Descripciones**: Información detallada de cada enfermedad
+- **Categorías**: Agrupación por sistemas y tipos
+
+#### Estructura del Archivo Excel CIE-10
+```
+Columnas requeridas:
+- Tabla: Categoría o grupo de enfermedades
+- Codigo: Código CIE-10 (ej: A00.0, B15.9, C78.1)
+- Nombre: Nombre oficial de la enfermedad
+- Descripcion: Descripción detallada
+```
+
+### Dependencias y Servicios
+
+#### Servicios Utilizados
+- **`DiseaseRepository`**: Repositorio para operaciones CRUD de enfermedades
+- **`get_disease_repository()`**: Factory para obtener instancia del repositorio
+
+#### Esquemas de Datos
+- **`DiseaseCreate`**: Schema Pydantic para validación de datos de enfermedades
+
+#### Librerías Externas
+```python
+import pandas as pd
+import openpyxl
+from typing import List, Dict, Optional
+```
+
+### Estructura del Script
+
+#### 1. Configuración y Validación
+```python
+import asyncio
+import pandas as pd
+import logging
+from pathlib import Path
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def validate_excel_structure(df: pd.DataFrame) -> bool:
+    """Validate Excel file has required columns"""
+    required_columns = ['Tabla', 'Codigo', 'Nombre', 'Descripcion']
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    
+    if missing_columns:
+        logger.error(f"Missing required columns: {missing_columns}")
+        return False
+    
+    return True
+```
+
+#### 2. Procesamiento de Datos
+```python
+def normalize_disease_data(row: pd.Series) -> Dict:
+    """Normalize disease data from Excel row"""
+    return {
+        "code": str(row['Codigo']).strip().upper(),
+        "name": normalize_text(str(row['Nombre'])),
+        "description": normalize_text(str(row['Descripcion'])),
+        "category": normalize_text(str(row['Tabla'])),
+        "classification": "CIE-10"
+    }
+
+def normalize_text(text: str) -> str:
+    """Normalize text for consistent formatting"""
+    if pd.isna(text) or text == 'nan':
+        return ""
+    
+    text = str(text).strip()
+    text = re.sub(r'\s+', ' ', text)
+    return text
+```
+
+#### 3. Función Principal
+```python
+async def import_diseases_from_excel(file_path: str, dry_run: bool = False):
+    """Import diseases from CIE-10 Excel file"""
+    try:
+        # Read Excel file
+        df = pd.read_excel(file_path)
+        logger.info(f"Read {len(df)} rows from {file_path}")
+        
+        # Validate structure
+        if not validate_excel_structure(df):
+            return
+        
+        # Get repository
+        repository = get_disease_repository()
+        
+        created_count = 0
+        duplicate_count = 0
+        error_count = 0
+        
+        for index, row in df.iterrows():
+            try:
+                # Normalize data
+                disease_data = normalize_disease_data(row)
+                
+                # Skip empty codes
+                if not disease_data["code"]:
+                    continue
+                
+                # Check for duplicates
+                existing = await repository.get_disease_by_code(disease_data["code"])
+                if existing:
+                    duplicate_count += 1
+                    logger.debug(f"Disease {disease_data['code']} already exists")
+                    continue
+                
+                if not dry_run:
+                    # Create disease
+                    disease_create = DiseaseCreate(**disease_data)
+                    result = await repository.create_disease(disease_create)
+                    logger.debug(f"Created disease: {result.code} - {result.name}")
+                
+                created_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error processing row {index}: {e}")
+        
+        # Summary
+        logger.info(f"Import summary:")
+        logger.info(f"- Created: {created_count}")
+        logger.info(f"- Duplicates: {duplicate_count}")
+        logger.info(f"- Errors: {error_count}")
+        
+    except Exception as e:
+        logger.error(f"Error importing diseases: {e}")
+```
+
+## Script: import_cancer_diseases.py
+
+### Funcionalidad Principal
+
+#### Importación de CIE-O
+El script procesa el archivo `CIE-O.xlsx` e importa:
+
+- **Códigos CIE-O**: Códigos específicos para oncología
+- **Tipos de cáncer**: Clasificación de tumores malignos
+- **Localizaciones**: Sitios anatómicos específicos
+- **Morfologías**: Tipos histológicos de tumores
+
+#### Estructura del Archivo Excel CIE-O
+```
+Columnas requeridas:
+- Codigo: Código CIE-O (ej: C50.1, C78.0)
+- Nombre: Nombre del tipo de cáncer
+- Descripcion: Descripción detallada
+- Localizacion: Sitio anatómico
+- Morfologia: Tipo histológico
+```
+
+### Características Específicas CIE-O
+
+#### Campos Adicionales
+```python
+def normalize_cancer_data(row: pd.Series) -> Dict:
+    """Normalize cancer disease data from Excel row"""
+    return {
+        "code": str(row['Codigo']).strip().upper(),
+        "name": normalize_text(str(row['Nombre'])),
+        "description": normalize_text(str(row['Descripcion'])),
+        "location": normalize_text(str(row.get('Localizacion', ''))),
+        "morphology": normalize_text(str(row.get('Morfologia', ''))),
+        "classification": "CIE-O",
+        "is_cancer": True
+    }
+```
+
+#### Validaciones Específicas
+```python
+def validate_cancer_code(code: str) -> bool:
+    """Validate CIE-O code format"""
+    # CIE-O codes typically start with C followed by numbers
+    pattern = r'^C\d{2}(\.\d)?$'
+    return re.match(pattern, code) is not None
+```
+
+## Características Técnicas
+
+### Procesamiento de Excel
+- **Lectura robusta**: Manejo de diferentes formatos Excel
+- **Validación de estructura**: Verificación de columnas requeridas
+- **Limpieza de datos**: Normalización de texto y códigos
+- **Manejo de errores**: Control de filas corruptas o incompletas
+
+### Deduplicación
+- **Verificación previa**: Chequeo de códigos existentes
+- **Prevención de duplicados**: Evita inserción de registros repetidos
+- **Logging detallado**: Registro de duplicados encontrados
+- **Estadísticas de importación**: Resumen de operaciones
+
+### Validaciones
+- **Códigos únicos**: Verificación de unicidad de códigos
+- **Formato de códigos**: Validación de estructura CIE-10/CIE-O
+- **Datos obligatorios**: Verificación de campos requeridos
+- **Integridad referencial**: Consistencia de datos
+
+### Rendimiento
+- **Procesamiento en lotes**: Importación eficiente de grandes volúmenes
+- **Operaciones asíncronas**: Procesamiento no bloqueante
+- **Indexación optimizada**: Búsquedas rápidas por código
+- **Memoria eficiente**: Procesamiento por chunks para archivos grandes
+
+## Uso de los Scripts
+
+### Ejecución Básica
+```bash
+# Importar enfermedades CIE-10
+python3 Scripts/import_diseases.py
+
+# Importar enfermedades oncológicas CIE-O
+python3 Scripts/import_cancer_diseases.py
+```
+
+### Ejecución con Modo Dry-Run
+```bash
+# Previsualización sin cambios reales
+python3 Scripts/import_diseases.py --dry-run
+python3 Scripts/import_cancer_diseases.py --dry-run
+```
+
+### Ejecución con Archivo Personalizado
+```bash
+# Especificar archivo Excel personalizado
+python3 Scripts/import_diseases.py --file custom_cie10.xlsx
+python3 Scripts/import_cancer_diseases.py --file custom_cieo.xlsx
+```
+
+### Verificación de Resultados
+```bash
+# Verificar enfermedades importadas
+python3 -c "
+from app.modules.diseases.repositories.disease_repository import get_disease_repository
+import asyncio
+
+async def check_diseases():
+    repository = get_disease_repository()
+    
+    # Count by classification
+    cie10_count = await repository.count_diseases_by_classification('CIE-10')
+    cieo_count = await repository.count_diseases_by_classification('CIE-O')
+    
+    print(f'CIE-10 diseases: {cie10_count}')
+    print(f'CIE-O diseases: {cieo_count}')
+    print(f'Total diseases: {cie10_count + cieo_count}')
+
+asyncio.run(check_diseases())
+"
+```
+
+## Casos de Uso
+
+### 1. Inicialización Completa
+```python
+# Importar ambos catálogos
+await import_diseases_from_excel("Scripts/CIE-10.xlsx")
+await import_cancer_diseases_from_excel("Scripts/CIE-O.xlsx")
+print("Catálogos médicos importados exitosamente")
+```
+
+### 2. Actualización de Catálogos
+```python
+# Actualizar con nuevas versiones
+await import_diseases_from_excel("Scripts/CIE-10_2024.xlsx", update_existing=True)
+```
+
+### 3. Importación Selectiva
+```python
+# Importar solo categorías específicas
+categories = ["Enfermedades infecciosas", "Neoplasias"]
+await import_diseases_selective(categories)
+```
+
+## Estructura de Datos
+
+### Enfermedad CIE-10
+```python
+{
+    "code": "A00.0",
+    "name": "Cólera debido a Vibrio cholerae 01, biotipo cholerae",
+    "description": "Infección intestinal aguda causada por...",
+    "category": "Enfermedades infecciosas y parasitarias",
+    "classification": "CIE-10",
+    "is_cancer": False
+}
+```
+
+### Enfermedad CIE-O
+```python
+{
+    "code": "C50.1",
+    "name": "Tumor maligno del pezón y de la areola",
+    "description": "Neoplasia maligna que afecta...",
+    "location": "Mama",
+    "morphology": "Adenocarcinoma",
+    "classification": "CIE-O",
+    "is_cancer": True
+}
+```
+
+## Consideraciones Importantes
+
+### Archivos Excel
+- **Formato estándar**: Seguir estructura de columnas requeridas
+- **Codificación**: UTF-8 para caracteres especiales
+- **Tamaño**: Optimizado para archivos de hasta 100MB
+- **Versiones**: Mantener versiones actualizadas de catálogos
+
+### Requisitos Previos
+- Archivos Excel CIE-10.xlsx y CIE-O.xlsx en directorio Scripts
+- Base de datos MongoDB configurada y accesible
+- Dependencias pandas y openpyxl instaladas
+- Suficiente espacio en disco para procesamiento
+
+### Limitaciones
+- Dependencia de formato específico de Excel
+- Sin validación médica de códigos
+- Sin integración automática con actualizaciones OMS
+- Procesamiento secuencial (no paralelo)
+
+## Integración con Otros Módulos
+
+### Módulo de Diagnósticos
+- Los diagnósticos utilizan códigos CIE-10/CIE-O
+- Validación automática de códigos en diagnósticos
+- Búsqueda inteligente de enfermedades
+
+### Módulo de Reportes
+- Generación de reportes por categorías de enfermedades
+- Estadísticas epidemiológicas
+- Análisis de patrones de diagnóstico
+
+### Módulo de Casos
+- Asociación de casos con enfermedades específicas
+- Clasificación automática de casos oncológicos
+- Trazabilidad de diagnósticos
+
+### Módulo de Búsqueda
+- Búsqueda por código, nombre o descripción
+- Filtros por clasificación (CIE-10/CIE-O)
+- Autocompletado en formularios
+
+Estos scripts son fundamentales para establecer la base de conocimiento médico que utilizará PathSys para clasificar y diagnosticar enfermedades de manera estandarizada y precisa.

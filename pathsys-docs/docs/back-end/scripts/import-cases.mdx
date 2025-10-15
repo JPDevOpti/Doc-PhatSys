@@ -1,0 +1,829 @@
+---
+id: import-cases
+title: Import Cases
+sidebar_position: 7
+---
+
+# Script de Importación de Casos
+
+El script `Import_cases.py` es responsable de generar casos patológicos de prueba en el sistema PathSys. Este script crea casos realistas con muestras, pruebas, asignaciones de patólogos, estados de procesamiento y fechas distribuidas a lo largo del año para simular un flujo de trabajo real del laboratorio.
+
+## Objetivo
+
+Poblar el sistema con casos patológicos de prueba que incluyen información completa de pacientes, muestras biológicas, pruebas solicitadas, asignaciones de patólogos y estados de procesamiento, creando un entorno realista para desarrollo, testing y demostración del sistema.
+
+## Ubicación del Archivo
+
+```
+Back-End/Scripts/Import_cases.py
+```
+
+## Funcionalidad Principal
+
+### Generación de Casos Patológicos
+El script crea casos con la siguiente información:
+
+- **Información del paciente**: Datos demográficos y de contacto
+- **Información de la entidad**: Hospital o clínica solicitante
+- **Muestras biológicas**: Regiones del cuerpo y pruebas asociadas
+- **Médico solicitante**: Profesional que solicita el estudio
+- **Servicio médico**: Especialidad que solicita el caso
+- **Estado del caso**: Progreso en el flujo de trabajo
+- **Asignación de patólogo**: Especialista responsable del análisis
+- **Fechas de procesamiento**: Cronología realista del caso
+
+### Distribución Temporal de Casos
+
+#### Casos Antiguos (Enero - hace 11 días)
+```python
+# Distribución uniforme desde enero hasta hace 11 días
+casos_antiguos_count = count - casos_recientes_count
+total_span_days_antiguos = (today - base_start_date).days - 10
+
+# Todos los casos antiguos están COMPLETADOS
+estado_final = CaseState.COMPLETADO
+```
+
+#### Casos Recientes (Últimos 10 días)
+```python
+# 20% de los casos son recientes
+casos_recientes_count = max(1, math.floor(count * 0.2))
+
+# Estados más realistas y variados
+estados_posibles = [
+    CaseState.EN_PROCESO,     # 50% probabilidad
+    CaseState.POR_FIRMAR,     # 30% probabilidad  
+    CaseState.POR_ENTREGAR,   # 15% probabilidad
+    CaseState.COMPLETADO      # 5% probabilidad
+]
+```
+
+### Regiones Anatómicas
+
+#### Cabeza y Cuello
+```python
+REGIONES_CUERPO = [
+    "Cabeza", "Cuello", "Cara", "Cuero Cabelludo", "Oreja", "Nariz", 
+    "Boca", "Lengua", "Garganta", "Tiroides"
+]
+```
+
+#### Tórax
+```python
+[
+    "Tórax", "Mama Derecha", "Mama Izquierda", "Pulmón Derecho", 
+    "Pulmón Izquierdo", "Corazón", "Mediastino"
+]
+```
+
+#### Abdomen
+```python
+[
+    "Abdomen", "Estómago", "Intestino Delgado", "Intestino Grueso", 
+    "Colon", "Recto", "Hígado", "Vesícula Biliar", "Páncreas", "Bazo", 
+    "Riñón Derecho", "Riñón Izquierdo", "Vejiga", "Útero", 
+    "Ovario Derecho", "Ovario Izquierdo", "Próstata", 
+    "Testículo Derecho", "Testículo Izquierdo"
+]
+```
+
+#### Extremidades
+```python
+[
+    "Brazo Derecho", "Brazo Izquierdo", "Antebrazo Derecho", 
+    "Antebrazo Izquierdo", "Mano Derecha", "Mano Izquierda", "Dedo",
+    "Muslo Derecho", "Muslo Izquierdo", "Pierna Derecha", 
+    "Pierna Izquierda", "Pie Derecho", "Pie Izquierdo", "Dedo del Pie"
+]
+```
+
+#### Piel y Ganglios
+```python
+[
+    "Piel de Cabeza", "Piel de Tórax", "Piel de Abdomen", 
+    "Piel de Brazo", "Piel de Pierna", "Piel de Espalda", "Piel de Glúteo",
+    "Ganglio Cervical", "Ganglio Axilar", "Ganglio Inguinal", 
+    "Ganglio Mediastínico", "Ganglio Abdominal"
+]
+```
+
+### Médicos Solicitantes
+
+```python
+NOMBRES_MEDICOS = [
+    "Dr. Carlos Rodríguez", "Dra. María González", "Dr. José Martínez", 
+    "Dra. Ana López", "Dr. Luis García", "Dra. Carmen Hernández", 
+    "Dr. Miguel Pérez", "Dra. Isabel Sánchez", "Dr. Antonio Ramírez", 
+    "Dra. Patricia Torres", "Dr. Francisco Flores", "Dra. Rosa Morales",
+    "Dr. Manuel Jiménez", "Dra. Teresa Ruiz", "Dr. Rafael Castillo", 
+    "Dra. Silvia Ortega", "Dr. Alejandro Vargas", "Dra. Lucía Ramos"
+    # ... más médicos
+]
+```
+
+### Servicios Médicos
+
+```python
+SERVICIOS_MEDICOS = [
+    "Patología", "Cirugía General", "Medicina Interna", "Ginecología", 
+    "Urología", "Dermatología", "Gastroenterología", "Oncología"
+]
+```
+
+## Dependencias y Servicios
+
+### Servicios Utilizados
+- **`CaseService`**: Servicio principal para gestión de casos
+- **`PatientService`**: Servicio para obtener pacientes disponibles
+- **`EntityService`**: Servicio para obtener entidades de salud
+- **`PathologistService`**: Servicio para obtener patólogos disponibles
+- **`TestService`**: Servicio para obtener pruebas del catálogo
+- **`DiseaseService`**: Servicio para obtener enfermedades (CIE-10, CIE-O)
+
+### Esquemas de Datos
+- **`CaseCreate`**: Schema principal para creación de casos
+- **`PatientInfo`**: Información del paciente en el caso
+- **`EntityInfo`**: Información de la entidad solicitante
+- **`SampleInfo`**: Información de muestras biológicas
+- **`SampleTest`**: Pruebas asociadas a cada muestra
+- **`AssignedPathologist`**: Patólogo asignado al caso
+- **`CasePriority`**: Prioridad del caso (Normal, Urgente, STAT)
+- **`CaseState`**: Estado del caso en el flujo de trabajo
+
+### Importaciones Principales
+```python
+from app.modules.cases.schemas.case import (
+    CaseCreate, PatientInfo, EntityInfo, SampleInfo, 
+    SampleTest, AssignedPathologist, CasePriority, CaseState
+)
+from app.modules.cases.services.case_service import CaseService
+from app.modules.cases.repositories.case_repository import CaseRepository
+from app.modules.patients.services.patient_service import PatientService
+from app.modules.entities.services.entity_service import EntityService
+from app.modules.pathologists.services.pathologist_service import PathologistService
+from app.modules.tests.services.test_service import TestService
+```
+
+## Estructura del Script
+
+### 1. Configuración Inicial
+```python
+import sys
+import math
+from pathlib import Path
+import asyncio
+import argparse
+import random
+from datetime import datetime, timedelta
+from typing import List, Dict, Tuple, Optional
+
+# Setup path for imports
+CURRENT_DIR = Path(__file__).resolve().parent
+BACKEND_ROOT = CURRENT_DIR.parent
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+```
+
+### 2. Funciones de Utilidad
+
+#### Cálculo de Días Hábiles
+```python
+def business_days(start: datetime, end: datetime) -> int:
+    """Calculate business days between two dates"""
+    current = start
+    count = 0
+    while current < end:
+        if current.weekday() < 5:  # Monday = 0, Sunday = 6
+            count += 1
+        current += timedelta(days=1)
+    return count
+```
+
+#### Generación de Observaciones
+```python
+def generar_observaciones_caso(region_cuerpo: str, tipo_atencion: str, 
+                              estado: str, es_reciente: bool) -> str:
+    """Generate realistic case observations based on body region, care type and state"""
+    observaciones_base = [
+        f"Muestra de {region_cuerpo.lower()} para estudio histopatológico",
+        f"Paciente {tipo_atencion.lower()} con lesión en {region_cuerpo.lower()}",
+        f"Biopsia de {region_cuerpo.lower()} - descartar malignidad",
+        f"Estudio anatomopatológico de {region_cuerpo.lower()}",
+        f"Análisis histológico de muestra de {region_cuerpo.lower()}"
+    ]
+    
+    observaciones_adicionales = [
+        "Se requiere estudio urgente",
+        "Control post-quirúrgico", 
+        "Seguimiento de lesión previa",
+        "Primera consulta",
+        "Paciente con antecedentes familiares",
+        "Lesión de crecimiento reciente",
+        "Cambios en características de la lesión"
+    ]
+    
+    # Combine base and additional observations
+    observacion_base = random.choice(observaciones_base)
+    if random.random() < 0.6:  # 60% chance of additional observation
+        observacion_adicional = random.choice(observaciones_adicionales)
+        return f"{observacion_base}. {observacion_adicional}."
+    
+    return f"{observacion_base}."
+```
+
+### 3. Funciones de Carga de Datos
+
+#### Carga de Entidades
+```python
+async def load_entities(db) -> Dict[str, Dict]:
+    """Load available entities from database"""
+    entity_service = EntityService(db)
+    entities = await entity_service.list_entities(skip=0, limit=1000)
+    
+    entity_dict: Dict[str, Dict] = {}
+    for entity in entities:
+        entity_data = entity.model_dump() if hasattr(entity, "model_dump") else entity
+        entity_dict[str(entity_data["_id"])] = {
+            "id": str(entity_data["_id"]),
+            "name": entity_data.get("name", ""),
+            "entity_type": entity_data.get("entity_type", ""),
+            "nit": entity_data.get("nit", ""),
+            "address": entity_data.get("address", ""),
+            "phone": entity_data.get("phone", ""),
+            "email": entity_data.get("email", "")
+        }
+    
+    print(f"✓ Cargadas {len(entity_dict)} entidades")
+    return entity_dict
+```
+
+#### Carga de Patólogos
+```python
+async def load_pathologists(db) -> List[Dict]:
+    """Load available pathologists from database"""
+    pathologist_service = PathologistService(db)
+    pathologists = await pathologist_service.list_pathologists(skip=0, limit=1000)
+    
+    pathologist_list: List[Dict] = []
+    for pathologist in pathologists:
+        pathologist_dict = pathologist.model_dump() if hasattr(pathologist, "model_dump") else pathologist
+        pathologist_code = pathologist_dict.get("pathologist_code") or pathologist_dict.get("code")
+        pathologist_name = pathologist_dict.get("name") or pathologist_dict.get("pathologist_name")
+        pathologist_list.append({
+            "id": pathologist_code,
+            "name": pathologist_name,
+            "pathologist_code": pathologist_code,
+            "pathologist_name": pathologist_name
+        })
+    
+    print(f"✓ Cargados {len(pathologist_list)} patólogos")
+    return pathologist_list
+```
+
+#### Carga de Pruebas
+```python
+async def load_tests(db) -> List[Dict]:
+    """Load available tests from database"""
+    test_service = TestService(db)
+    from app.modules.tests.schemas.test import TestSearch
+    search_params = TestSearch(limit=100)
+    tests = await test_service.list_all(search_params)
+    
+    test_list: List[Dict] = []
+    for test in tests:
+        test_dict = test.model_dump() if hasattr(test, "model_dump") else test
+        test_code = test_dict.get("test_code") or test_dict.get("code")
+        test_name = test_dict.get("name") or test_dict.get("test_name")
+        test_list.append({
+            "id": test_code,
+            "name": test_name,
+            "test_code": test_code,
+            "test_name": test_name
+        })
+    
+    print(f"✓ Cargadas {len(test_list)} pruebas del catálogo")
+    return test_list
+```
+
+#### Carga de Pacientes
+```python
+async def load_patients(db, batch_size: int = 1000) -> List[Dict]:
+    """Load available patients from database with batch processing"""
+    patients: List[Dict] = []
+    cursor = db.patients.find({}, {
+        "_id": 1, "patient_code": 1, "identification_type": 1,
+        "identification_number": 1, "first_name": 1, "second_name": 1,
+        "first_lastname": 1, "second_lastname": 1, "birth_date": 1,
+        "gender": 1, "entity_info": 1, "care_type": 1, "location": 1
+    })
+    
+    while True:
+        chunk = await cursor.to_list(length=batch_size)
+        if not chunk:
+            break
+        for doc in chunk:
+            # Build full name from separate fields
+            name_parts = [doc.get("first_name", "")]
+            if doc.get("second_name"):
+                name_parts.append(doc.get("second_name"))
+            if doc.get("first_lastname"):
+                name_parts.append(doc.get("first_lastname"))
+            if doc.get("second_lastname"):
+                name_parts.append(doc.get("second_lastname"))
+            
+            full_name = " ".join(filter(None, name_parts))
+            
+            patients.append({
+                "id": str(doc["_id"]),
+                "patient_code": doc.get("patient_code", ""),
+                "identification_type": doc.get("identification_type", ""),
+                "identification_number": doc.get("identification_number", ""),
+                "full_name": full_name,
+                "birth_date": doc.get("birth_date"),
+                "gender": doc.get("gender", ""),
+                "entity_info": doc.get("entity_info", {}),
+                "care_type": doc.get("care_type", ""),
+                "location": doc.get("location", {})
+            })
+    
+    print(f"✓ Cargados {len(patients)} pacientes")
+    return patients
+```
+
+### 4. Construcción de Muestras y Pruebas
+
+```python
+def build_sample_tests(tests_catalog: List[Dict]) -> List[SampleTest]:
+    """Build sample tests from available catalog"""
+    if not tests_catalog:
+        return []
+    
+    # Select 1-3 random tests per sample
+    num_tests = random.randint(1, 3)
+    selected_tests = random.sample(tests_catalog, min(num_tests, len(tests_catalog)))
+    
+    sample_tests = []
+    for test in selected_tests:
+        sample_tests.append(SampleTest(
+            test_code=test["test_code"],
+            test_name=test["test_name"]
+        ))
+    
+    return sample_tests
+```
+
+### 5. Función Principal de Importación
+
+```python
+async def seed_cases(count: int, year: int, start_number: int, dry_run: bool) -> Tuple[int, int]:
+    """Generate and import test cases"""
+    print(f"{'='*60}")
+    print("CASE IMPORT")
+    print(f"{'='*60}")
+    print(f"Mode: {'DRY-RUN (no changes)' if dry_run else 'REAL EXECUTION'}")
+    print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Total cases to generate: {count}")
+    print(f"Year: {year}")
+    print(f"Starting number: {start_number:05d}")
+    print(f"{'='*60}")
+    
+    if dry_run:
+        print("DRY-RUN MODE: No actual cases will be created")
+        return count, 0
+    
+    db = await get_database()
+    created = 0
+    skipped = 0
+    
+    try:
+        # Load all required data
+        entities = await load_entities(db)
+        pathologists = await load_pathologists(db)
+        tests_catalog = await load_tests(db)
+        patients = await load_patients(db)
+        
+        if not entities:
+            print("No entities found. Please run import_entities.py first.")
+            return 0, 0
+        
+        if not patients:
+            print("No patients found. Please run Import_patients.py first.")
+            return 0, 0
+        
+        if not tests_catalog:
+            print("No tests found. Please run import_tests.py first.")
+            return 0, 0
+        
+        # Initialize services
+        case_service = CaseService(db)
+        
+        # Date calculations
+        today = datetime.now().replace(hour=23, minute=59, second=59, microsecond=0)
+        base_start_date = datetime(year, 1, 1)
+        
+        # Calculate recent vs old cases distribution
+        casos_recientes_count = max(1, math.floor(count * 0.2))  # 20% recent cases
+        casos_antiguos_count = count - casos_recientes_count
+        
+        # Generate cases
+        for i in range(count):
+            try:
+                # Select random patient and entity
+                patient = random.choice(patients)
+                entity_id = random.choice(list(entities.keys()))
+                entity = entities[entity_id]
+                
+                # Generate samples (1-3 per case)
+                samples: List[SampleInfo] = []
+                num_muestras = random.randint(1, 3)
+                for _m in range(num_muestras):
+                    region = random.choice(REGIONES_CUERPO)
+                    tests_items = build_sample_tests(tests_catalog)
+                    samples.append(SampleInfo(body_region=region, tests=tests_items))
+                
+                # Requesting physician (80% probability)
+                requesting_physician: Optional[str] = None
+                if random.random() < 0.8:
+                    requesting_physician = random.choice(NOMBRES_MEDICOS)
+                
+                # Medical service
+                service = random.choice(SERVICIOS_MEDICOS)
+                
+                # Determine if this is a recent or old case
+                es_caso_reciente = i >= (count - casos_recientes_count)
+                
+                if es_caso_reciente:
+                    # Recent case: random date in last 10 days
+                    days_back = random.randint(0, 10)
+                    fecha_creacion = today - timedelta(days=days_back)
+                    days_since_creation = days_back
+                else:
+                    # Old case: distribute from January to 11 days ago
+                    caso_antiguo_index = i
+                    total_span_days_antiguos = (today - base_start_date).days - 10
+                    if casos_antiguos_count <= 1:
+                        ingreso_offset_days = total_span_days_antiguos
+                    else:
+                        ingreso_offset_days = math.floor(caso_antiguo_index * (total_span_days_antiguos / (casos_antiguos_count - 1)))
+                    ingreso_offset_days = max(0, min(total_span_days_antiguos, ingreso_offset_days))
+                    fecha_creacion = base_start_date + timedelta(days=ingreso_offset_days)
+                    days_since_creation = (today - fecha_creacion).days
+                
+                # Determine case state
+                if es_caso_reciente:
+                    # Recent cases: realistic and varied states
+                    estados_posibles = [
+                        CaseState.EN_PROCESO,
+                        CaseState.POR_FIRMAR, 
+                        CaseState.POR_ENTREGAR,
+                        CaseState.COMPLETADO
+                    ]
+                    probabilidades = [0.5, 0.3, 0.15, 0.05]  # 50%, 30%, 15%, 5%
+                    estado_final = random.choices(estados_posibles, weights=probabilidades)[0]
+                else:
+                    # Old cases: ALL completed
+                    estado_final = CaseState.COMPLETADO
+                
+                # Assign pathologist based on case state
+                assigned_pathologist: Optional[AssignedPathologist] = None
+                if pathologists:
+                    probabilidad_patologo = {
+                        CaseState.EN_PROCESO: 0.7,      # 70% have assigned pathologist
+                        CaseState.POR_FIRMAR: 0.95,     # 95% have assigned pathologist
+                        CaseState.POR_ENTREGAR: 1.0,    # 100% have assigned pathologist
+                        CaseState.COMPLETADO: 1.0       # 100% have assigned pathologist
+                    }
+                    
+                    if random.random() < probabilidad_patologo.get(estado_final, 0.5):
+                        pathologist = random.choice(pathologists)
+                        assigned_pathologist = AssignedPathologist(
+                            pathologist_code=pathologist["pathologist_code"],
+                            pathologist_name=pathologist["pathologist_name"]
+                        )
+                
+                # Generate case observations
+                observaciones = generar_observaciones_caso(
+                    samples[0].body_region if samples else "No especificado",
+                    patient.get("care_type", "No especificado"),
+                    estado_final.value,
+                    es_caso_reciente
+                )
+                
+                # Create case payload
+                case_data = CaseCreate(
+                    patient_info=PatientInfo(
+                        patient_id=patient["id"],
+                        patient_code=patient["patient_code"],
+                        identification_type=patient["identification_type"],
+                        identification_number=patient["identification_number"],
+                        full_name=patient["full_name"],
+                        birth_date=patient["birth_date"],
+                        gender=patient["gender"],
+                        entity_info=patient.get("entity_info", {}),
+                        care_type=patient.get("care_type", ""),
+                        location=patient.get("location", {})
+                    ),
+                    entity_info=EntityInfo(
+                        entity_id=entity["id"],
+                        entity_name=entity["name"],
+                        entity_type=entity["entity_type"],
+                        nit=entity["nit"],
+                        address=entity["address"],
+                        phone=entity["phone"],
+                        email=entity["email"]
+                    ),
+                    samples=samples,
+                    requesting_physician=requesting_physician,
+                    service=service,
+                    observations=observaciones,
+                    priority=CasePriority.NORMAL,
+                    state=estado_final,
+                    assigned_pathologist=assigned_pathologist,
+                    created_at=fecha_creacion,
+                    is_active=True
+                )
+                
+                # Create case
+                created_case = await case_service.create_case(case_data)
+                created += 1
+                
+                print(f"[{i+1}/{count}] Created case: {created_case.case_code}")
+                print(f"  Patient: {patient['full_name']} ({patient['identification_number']})")
+                print(f"  Entity: {entity['name']}")
+                print(f"  Samples: {len(samples)}")
+                print(f"  State: {estado_final.value}")
+                print(f"  Date: {fecha_creacion.strftime('%Y-%m-%d')}")
+                if assigned_pathologist:
+                    print(f"  Pathologist: {assigned_pathologist.pathologist_name}")
+                
+                # Update case with additional fields for completed cases
+                if estado_final in [CaseState.POR_FIRMAR, CaseState.POR_ENTREGAR, CaseState.COMPLETADO]:
+                    # Assign signing date with realistic business days (1-11 days, bias towards 3-7)
+                    pesos = [1, 2, 4, 6, 6, 6, 6, 4, 2, 1, 1]  # weights for 1..11 days
+                    objetivo_habiles = random.choices(list(range(1, 12)), weights=pesos, k=1)[0]
+                    dias_corridos = 0
+                    fecha_firma = fecha_creacion
+                    while business_days(fecha_creacion, fecha_firma) < objetivo_habiles:
+                        dias_corridos += 1
+                        fecha_firma = fecha_creacion + timedelta(days=dias_corridos)
+                    if fecha_firma > today:
+                        fecha_firma = today
+                    
+                    update_data = {
+                        "signed_at": fecha_firma,
+                        "business_days": objetivo_habiles
+                    }
+                    
+                    # For completed cases, add additional fields
+                    if estado_final == CaseState.COMPLETADO:
+                        # Generate case result
+                        resultados_posibles = [
+                            "Proceso inflamatorio crónico inespecífico",
+                            "Hiperplasia benigna",
+                            "Displasia leve",
+                            "Proceso reactivo",
+                            "Tejido normal",
+                            "Fibrosis",
+                            "Necrosis",
+                            "Proceso infeccioso"
+                        ]
+                        resultado = random.choice(resultados_posibles)
+                        update_data.update({
+                            "result": resultado,
+                            "delivered_at": fecha_firma + timedelta(days=random.randint(0, 2))
+                        })
+                    
+                    # Update case with additional data
+                    from app.modules.cases.schemas.case import CaseUpdate
+                    case_update = CaseUpdate(**update_data)
+                    await case_service.update_case(created_case.case_code, case_update)
+                
+            except Exception as e:
+                print(f"[{i+1}/{count}] Error creating case: {str(e)}")
+                skipped += 1
+                continue
+        
+        # Print final statistics
+        print(f"{'='*60}")
+        print(f"IMPORT COMPLETED")
+        print(f"Total cases created: {created}")
+        print(f"Total cases skipped: {skipped}")
+        print(f"Success rate: {(created/(created+skipped))*100:.1f}%")
+        
+        # Print date distribution statistics
+        if created > 0:
+            stats = {
+                'casos_antiguos': casos_antiguos_count,
+                'casos_recientes': casos_recientes_count,
+                'total': count
+            }
+            
+            fecha_inicio_antiguos = base_start_date
+            fecha_fin_antiguos = today - timedelta(days=11)
+            fecha_inicio_recientes = today - timedelta(days=10)
+            fecha_fin_recientes = today
+            
+            print(f"\nDistribution of generated cases:")
+            print(f"Old cases: {stats['casos_antiguos']} ({(stats['casos_antiguos']/stats['total'])*100:.1f}%)")
+            print(f"Recent cases: {stats['casos_recientes']} ({(stats['casos_recientes']/stats['total'])*100:.1f}%)")
+            
+            if stats['casos_antiguos'] > 0:
+                print(f"\nOld cases generated between:")
+                print(f"  From: {fecha_inicio_antiguos.strftime('%d/%m/%Y')} (January 1st)")
+                print(f"  To: {fecha_fin_antiguos.strftime('%d/%m/%Y')} (11 days ago)")
+            
+            if stats['casos_recientes'] > 0:
+                print(f"\nRecent cases generated between:")
+                print(f"  From: {fecha_inicio_recientes.strftime('%d/%m/%Y')} (10 days ago)")
+                print(f"  To: {fecha_fin_recientes.strftime('%d/%m/%Y')} (today)")
+        
+        print("="*60)
+        
+        return created, skipped
+    finally:
+        await close_mongo_connection()
+```
+
+## Características Técnicas
+
+### Distribución Temporal Realista
+- **Casos antiguos**: Distribuidos uniformemente desde enero hasta hace 11 días
+- **Casos recientes**: 20% de los casos en los últimos 10 días
+- **Estados progresivos**: Casos antiguos completados, casos recientes en varios estados
+- **Fechas de firma**: Cálculo realista de días hábiles (1-11 días, sesgo hacia 3-7)
+
+### Asignación Inteligente de Patólogos
+- **Probabilidad por estado**: Mayor probabilidad de asignación en estados avanzados
+- **EN_PROCESO**: 70% tienen patólogo asignado
+- **POR_FIRMAR**: 95% tienen patólogo asignado
+- **POR_ENTREGAR/COMPLETADO**: 100% tienen patólogo asignado
+
+### Generación de Muestras Realistas
+- **1-3 muestras por caso**: Distribución variable
+- **Regiones anatómicas**: 60+ regiones del cuerpo humano
+- **Pruebas asociadas**: 1-3 pruebas por muestra del catálogo disponible
+- **Observaciones contextuales**: Generadas según región y estado
+
+### Validaciones y Controles
+- **Verificación de dependencias**: Entidades, pacientes, pruebas y patólogos
+- **Manejo de errores**: Continuidad tras errores individuales
+- **Logging detallado**: Registro completo de operaciones
+- **Estadísticas finales**: Resumen de casos creados y distribución
+
+## Uso del Script
+
+### Ejecución Básica
+```bash
+# Crear casos con prompt interactivo
+python3 Scripts/Import_cases.py
+
+# Crear 100 casos para el año actual
+python3 Scripts/Import_cases.py --count 100
+```
+
+### Ejecución con Parámetros Personalizados
+```bash
+# Crear 200 casos para el año 2023, comenzando desde el número 50
+python3 Scripts/Import_cases.py --count 200 --year 2023 --start-number 50
+
+# Previsualización sin crear casos reales
+python3 Scripts/Import_cases.py --count 50 --dry-run
+```
+
+### Verificación de Resultados
+```bash
+# Verificar casos creados
+python3 -c "
+from app.modules.cases.services.case_service import CaseService
+from app.config.database import get_database
+import asyncio
+
+async def check_cases():
+    db = await get_database()
+    service = CaseService(db)
+    cases = await service.list_cases()
+    print(f'Total cases: {len(cases)}')
+    for case in cases[:10]:  # Show first 10
+        print(f'- {case.case_code}: {case.patient_info.full_name} ({case.state.value})')
+
+asyncio.run(check_cases())
+"
+```
+
+## Casos de Uso
+
+### 1. Desarrollo y Testing
+```python
+# Crear casos para desarrollo
+await seed_cases(count=50, year=2024, start_number=1, dry_run=False)
+print("Casos de desarrollo creados")
+```
+
+### 2. Demostración del Sistema
+```python
+# Crear dataset completo de demostración
+await seed_cases(count=300, year=2024, start_number=1, dry_run=False)
+print("Dataset de demostración preparado")
+```
+
+### 3. Pruebas de Rendimiento
+```python
+# Crear gran volumen de casos
+await seed_cases(count=1000, year=2024, start_number=1, dry_run=False)
+print("Dataset de pruebas de rendimiento creado")
+```
+
+### 4. Simulación de Flujo de Trabajo
+```python
+# Crear casos con distribución temporal realista
+await seed_cases(count=500, year=2024, start_number=1, dry_run=False)
+print("Simulación de flujo de trabajo anual creada")
+```
+
+## Estados de Casos Generados
+
+### EN_PROCESO (50% de casos recientes)
+- Casos que están siendo analizados
+- 70% tienen patólogo asignado
+- Sin fecha de firma
+- Observaciones de procesamiento
+
+### POR_FIRMAR (30% de casos recientes)
+- Análisis completado, esperando validación
+- 95% tienen patólogo asignado
+- Fecha de firma calculada
+- Resultado preliminar
+
+### POR_ENTREGAR (15% de casos recientes)
+- Casos firmados, listos para entrega
+- 100% tienen patólogo asignado
+- Fecha de firma y resultado
+- Pendiente de entrega
+
+### COMPLETADO (5% de casos recientes + 100% de casos antiguos)
+- Casos completamente procesados
+- 100% tienen patólogo asignado
+- Fechas de firma y entrega
+- Resultado final y días hábiles calculados
+
+## Consideraciones Importantes
+
+### Requisitos Previos
+- Base de datos MongoDB configurada y accesible
+- Entidades de salud importadas (`import_entities.py`)
+- Pacientes importados (`Import_patients.py`)
+- Pruebas importadas (`import_tests.py`)
+- Patólogos importados (`import_pathologists.py`)
+- Variables de entorno configuradas
+
+### Limitaciones
+- Datos ficticios (no usar en producción)
+- Resultados generados aleatoriamente
+- Sin integración con sistemas de laboratorio reales
+- Sin validación de compatibilidad prueba-región anatómica
+
+### Recomendaciones de Uso
+- **Desarrollo**: 50-100 casos
+- **Testing**: 100-500 casos
+- **Demostración**: 300-800 casos
+- **Pruebas de rendimiento**: 500-2000 casos
+
+### Rendimiento
+- Procesamiento por lotes para pacientes
+- Carga optimizada de catálogos
+- Manejo eficiente de memoria
+- Logging progresivo para casos grandes
+
+## Integración con Otros Módulos
+
+### Módulo de Pacientes
+- Selección aleatoria de pacientes existentes
+- Información demográfica completa
+- Datos de afiliación y ubicación
+
+### Módulo de Entidades
+- Asignación de entidades solicitantes
+- Información de contacto y facturación
+- Tipos de entidades (hospitales, clínicas)
+
+### Módulo de Patólogos
+- Asignación inteligente según estado del caso
+- Códigos y nombres de patólogos
+- Distribución equitativa de carga de trabajo
+
+### Módulo de Pruebas
+- Selección de pruebas del catálogo disponible
+- Asociación realista prueba-muestra
+- Múltiples pruebas por caso
+
+### Módulo de Reportes
+- Casos distribuidos temporalmente para análisis
+- Estados variados para reportes de productividad
+- Datos de días hábiles para métricas de eficiencia
+
+### Módulo de Facturación
+- Información de entidades para facturación
+- Pruebas con códigos para tarifarios
+- Estados de casos para control de facturación
+
+Este script es esencial para crear un entorno de testing completo y realista, proporcionando casos con toda la complejidad y variabilidad que se encuentra en un laboratorio de patología real, permitiendo probar todas las funcionalidades del sistema PathSys.

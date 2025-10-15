@@ -1,0 +1,294 @@
+---
+id: mod-cases
+title: Gestión de Casos
+sidebar_position: 3
+---
+
+# Gestión de Casos
+
+El submódulo de gestión de casos maneja las operaciones CRUD fundamentales para el ciclo de vida de los casos patológicos, incluyendo creación, actualización, consulta y eliminación de casos.
+
+## Objetivo
+
+Proporcionar funcionalidad completa para:
+- Crear nuevos casos patológicos con códigos únicos
+- Actualizar información de casos existentes
+- Consultar casos con filtros avanzados
+- Eliminar casos cuando sea necesario
+- Gestionar estados y prioridades de casos
+
+## Estructura de Archivos
+
+```
+cases/
+├── routes/
+│   └── case_routes.py          # Endpoints principales de gestión
+├── services/
+│   └── case_service.py         # Lógica de negocio
+├── repositories/
+│   ├── case_repository.py      # Acceso a datos
+│   └── consecutive_repository.py # Generación de códigos
+└── schemas/
+    └── case.py                 # Esquemas de datos
+```
+
+## Endpoints de API
+
+### Crear Caso
+```http
+POST /api/v1/cases/
+```
+
+**Request Body:**
+```json
+{
+  "patient_info": {
+    "patient_code": "CC-12345678",
+    "identification_type": "CC",
+    "identification_number": "12345678",
+    "name": "Juan Pérez",
+    "age": 45,
+    "gender": "M",
+    "entity_info": {
+      "id": "EPS001",
+      "name": "EPS Salud"
+    },
+    "care_type": "Ambulatorio"
+  },
+  "requesting_physician": "Dr. María García",
+  "service": "Patología",
+  "samples": [
+    {
+      "sample_code": "M001",
+      "sample_type": "Biopsia",
+      "organ": "Hígado",
+      "description": "Muestra de tejido hepático"
+    }
+  ],
+  "priority": "Normal",
+  "observations": "Paciente con antecedentes de hepatitis"
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "case_code": "2025-00001",
+  "patient_info": { /* ... */ },
+  "state": "En proceso",
+  "priority": "Normal",
+  "created_at": "2025-01-01T10:00:00Z",
+  "updated_at": "2025-01-01T10:00:00Z"
+}
+```
+
+### Actualizar Caso
+```http
+PUT /api/v1/cases/{case_code}
+```
+
+**Request Body:**
+```json
+{
+  "state": "Por firmar",
+  "assigned_pathologist": {
+    "code": "PATH001",
+    "name": "Dr. Carlos López"
+  },
+  "observations": "Caso actualizado con nueva información"
+}
+```
+
+### Listar Casos
+```http
+GET /api/v1/cases/
+```
+
+**Query Parameters:**
+- `skip`: Número de casos a omitir (paginación)
+- `limit`: Número máximo de casos a retornar
+- `search`: Búsqueda general por nombre, documento o código
+- `pathologist`: Filtrar por patólogo asignado
+- `entity`: Filtrar por entidad
+- `state`: Filtrar por estado del caso
+- `test`: Filtrar por prueba específica
+- `date_from`: Fecha de inicio (YYYY-MM-DD)
+- `date_to`: Fecha de fin (YYYY-MM-DD)
+
+**Ejemplo:**
+```http
+GET /api/v1/cases/?state=En proceso&pathologist=PATH001&limit=50
+```
+
+### Obtener Caso
+```http
+GET /api/v1/cases/{case_code}
+```
+
+### Eliminar Caso
+```http
+DELETE /api/v1/cases/{case_code}
+```
+
+## Esquemas de Datos
+
+### CaseCreate
+```python
+class CaseCreate(BaseModel):
+    patient_info: PatientInfo
+    requesting_physician: Optional[str] = None
+    service: Optional[str] = None
+    samples: Optional[List[SampleInfo]] = []
+    state: str = "En proceso"
+    priority: str = "Normal"
+    observations: Optional[str] = None
+```
+
+### CaseUpdate
+```python
+class CaseUpdate(BaseModel):
+    patient_info: Optional[PatientInfo] = None
+    requesting_physician: Optional[str] = None
+    service: Optional[str] = None
+    samples: Optional[List[SampleInfo]] = None
+    state: Optional[str] = None
+    priority: Optional[str] = None
+    observations: Optional[str] = None
+    assigned_pathologist: Optional[AssignedPathologist] = None
+    delivered_to: Optional[str] = None
+    delivered_at: Optional[datetime] = None
+    business_days: Optional[int] = None
+    additional_notes: Optional[List[AdditionalNote]] = None
+    complementary_tests: Optional[List[Dict[str, Any]]] = None
+```
+
+### CaseResponse
+```python
+class CaseResponse(BaseModel):
+    id: str
+    case_code: str
+    patient_info: PatientInfo
+    requesting_physician: Optional[str] = None
+    service: Optional[str] = None
+    samples: List[SampleInfo] = []
+    state: str
+    priority: str
+    observations: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    signed_at: Optional[datetime] = None
+    assigned_pathologist: Optional[AssignedPathologist] = None
+    result: Optional[CaseResult] = None
+    delivered_to: Optional[str] = None
+    delivered_at: Optional[datetime] = None
+    business_days: Optional[int] = None
+    additional_notes: Optional[List[AdditionalNote]] = None
+    complementary_tests: Optional[List[Dict[str, Any]]] = None
+```
+
+## Lógica de Negocio
+
+### CaseService
+
+**Métodos principales:**
+- `create_case(payload: CaseCreate)`: Crear nuevo caso con código único
+- `update_case(case_code: str, payload: CaseUpdate)`: Actualizar caso existente
+- `delete_case(case_code: str)`: Eliminar caso
+- `list_cases(...)`: Listar casos con filtros
+- `get_case(case_code: str)`: Obtener caso específico
+
+**Características:**
+- **Generación de códigos únicos**: Formato YYYY-NNNNN (ej: 2025-00001)
+- **Normalización de datos**: Códigos de paciente automáticos desde identificación
+- **Validaciones de estado**: Solo casos "Por entregar" pueden marcarse como "Completado"
+- **Reintentos**: Hasta 3 intentos para generar códigos únicos
+- **Búsqueda avanzada**: Múltiples filtros combinables
+
+### Estados de Casos
+
+1. **En proceso**: Estado inicial, caso recién creado
+2. **Por firmar**: Caso con resultados listos para firma
+3. **Por entregar**: Caso firmado, listo para entrega
+4. **Completado**: Caso entregado al paciente/entidad
+
+### Prioridades
+
+- **Normal**: Prioridad estándar
+- **Urgente**: Requiere atención prioritaria
+- **Crítico**: Máxima prioridad
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Negocio
+- **Códigos únicos**: Verificación de unicidad en códigos de caso
+- **Estados válidos**: Transiciones de estado controladas
+- **Datos requeridos**: Validación de campos obligatorios
+- **Formatos**: Validación de formatos de fecha, códigos, etc.
+
+### Códigos de Error
+- **400 Bad Request**: Datos inválidos o transiciones de estado incorrectas
+- **404 Not Found**: Caso no encontrado
+- **409 Conflict**: Conflicto en generación de códigos únicos
+- **500 Internal Server Error**: Errores internos del servidor
+
+## Repositorio
+
+### CaseRepository
+
+**Métodos principales:**
+- `create(data)`: Insertar nuevo caso
+- `get_by_case_code(case_code)`: Obtener por código
+- `update_by_case_code(case_code, data)`: Actualizar por código
+- `delete_by_case_code(case_code)`: Eliminar por código
+- `list_with_filters(...)`: Listar con filtros avanzados
+
+### CaseConsecutiveRepository
+
+**Funcionalidad:**
+- Generación de códigos consecutivos por año
+- Manejo de concurrencia para evitar duplicados
+- Reinicio automático de secuencia cada año
+
+## Optimización
+
+### Índices de Base de Datos
+```javascript
+// Índices recomendados
+db.cases.createIndex({ "case_code": 1 }, { unique: true })
+db.cases.createIndex({ "patient_info.patient_code": 1 })
+db.cases.createIndex({ "state": 1 })
+db.cases.createIndex({ "assigned_pathologist.code": 1 })
+db.cases.createIndex({ "created_at": -1 })
+db.cases.createIndex({ "patient_info.entity_info.id": 1 })
+```
+
+### Variables de Configuración
+```python
+# Configuración de paginación
+DEFAULT_LIMIT = 100
+MAX_LIMIT = 100000
+
+# Configuración de reintentos
+MAX_CODE_GENERATION_RETRIES = 3
+
+# Configuración de búsqueda
+SEARCH_FIELDS = ["patient_info.name", "patient_info.identification_number", "case_code"]
+```
+
+## Integración con Otros Módulos
+
+- **Pacientes**: Normalización de códigos de paciente
+- **Patólogos**: Asignación de casos a patólogos
+- **Entidades**: Asociación con EPS/entidades
+- **Resultados**: Actualización de resultados de casos
+- **Firmas**: Proceso de firma digital
+- **Estadísticas**: Métricas y análisis de casos
+
+## Casos de Uso Comunes
+
+1. **Crear caso nuevo**: Registro de caso con información del paciente
+2. **Asignar patólogo**: Asignación de caso a patólogo específico
+3. **Actualizar estado**: Cambio de estado según progreso del caso
+4. **Buscar casos**: Búsqueda con múltiples criterios
+5. **Consultar historial**: Revisión de casos anteriores del paciente

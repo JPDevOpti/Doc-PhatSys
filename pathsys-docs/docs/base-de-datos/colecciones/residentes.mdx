@@ -1,0 +1,363 @@
+# Colección: Residentes
+
+## Descripción General
+La colección `residents` almacena la información de los médicos residentes en formación de patología que participan en el sistema PathSys. Los residentes están en proceso de especialización y requieren supervisión de patólogos certificados para sus diagnósticos.
+
+## Esquema de Datos
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | ObjectId | Sí | Identificador único del documento |
+| `resident_code` | String | Sí | Código único del residente |
+| `resident_name` | String | Sí | Nombre completo del residente |
+| `resident_email` | String | Sí | Email único del residente |
+| `medical_license` | String | No | Número de licencia médica |
+| `residency_year` | Integer | Sí | Año de residencia (1-4) |
+| `supervisor_id` | ObjectId | No | ID del patólogo supervisor |
+| `university` | String | No | Universidad de procedencia |
+| `start_date` | DateTime | Sí | Fecha de inicio de residencia |
+| `expected_end_date` | DateTime | Sí | Fecha esperada de finalización |
+| `is_active` | Boolean | Sí | Estado activo/inactivo |
+| `observations` | String | No | Notas adicionales |
+| `created_at` | DateTime | Sí | Fecha de creación |
+| `updated_at` | DateTime | Sí | Fecha de última actualización |
+
+## Validaciones
+
+- **resident_code**: Único en el sistema, longitud máxima 11 caracteres
+- **resident_name**: Longitud mínima 1, máxima 100 caracteres
+- **resident_email**: Formato de email válido, único en el sistema
+- **medical_license**: Formato específico según normativa local
+- **residency_year**: Entero entre 1 y 4
+- **supervisor_id**: Debe existir en la colección de patólogos
+- **university**: Longitud máxima 100 caracteres
+- **start_date**: No puede ser fecha futura
+- **expected_end_date**: Debe ser posterior a start_date
+- **observations**: Longitud máxima 500 caracteres
+
+## Índices Recomendados
+
+```javascript
+// Índice único para código de residente
+db.residents.createIndex({ "resident_code": 1 }, { unique: true })
+
+// Índice único para email
+db.residents.createIndex({ "resident_email": 1 }, { unique: true })
+
+// Índice para búsquedas por nombre
+db.residents.createIndex({ "resident_name": "text" })
+
+// Índice para filtros por estado activo
+db.residents.createIndex({ "is_active": 1 })
+
+// Índice para filtros por año de residencia
+db.residents.createIndex({ "residency_year": 1 })
+
+// Índice para relación con supervisor
+db.residents.createIndex({ "supervisor_id": 1 })
+
+// Índice compuesto para búsquedas activas por año
+db.residents.createIndex({ 
+  "is_active": 1, 
+  "residency_year": 1,
+  "resident_name": 1 
+})
+```
+
+## Esquemas de Operación
+
+### ResidentCreate
+```python
+class ResidentCreate(BaseModel):
+    resident_code: str = Field(..., max_length=11)
+    resident_name: str = Field(..., min_length=1, max_length=100)
+    resident_email: EmailStr
+    medical_license: Optional[str] = Field(None, max_length=50)
+    residency_year: int = Field(..., ge=1, le=4)
+    supervisor_id: Optional[str] = None
+    university: Optional[str] = Field(None, max_length=100)
+    start_date: datetime
+    expected_end_date: datetime
+    is_active: bool = True
+    observations: Optional[str] = Field(None, max_length=500)
+```
+
+### ResidentUpdate
+```python
+class ResidentUpdate(BaseModel):
+    resident_name: Optional[str] = Field(None, max_length=100)
+    resident_email: Optional[EmailStr] = None
+    medical_license: Optional[str] = Field(None, max_length=50)
+    residency_year: Optional[int] = Field(None, ge=1, le=4)
+    supervisor_id: Optional[str] = None
+    university: Optional[str] = Field(None, max_length=100)
+    expected_end_date: Optional[datetime] = None
+    is_active: Optional[bool] = None
+    observations: Optional[str] = Field(None, max_length=500)
+```
+
+### ResidentResponse
+```python
+class ResidentResponse(BaseModel):
+    id: str
+    resident_code: str
+    resident_name: str
+    resident_email: str
+    medical_license: Optional[str]
+    residency_year: int
+    supervisor_id: Optional[str]
+    supervisor_name: Optional[str]  # Populated from pathologists collection
+    university: Optional[str]
+    start_date: datetime
+    expected_end_date: datetime
+    is_active: bool
+    observations: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+```
+
+### ResidentSearch
+```python
+class ResidentSearch(BaseModel):
+    q: Optional[str] = Field(None, description="Término de búsqueda general")
+    resident_name: Optional[str] = Field(None, description="Filtrar por nombre")
+    resident_code: Optional[str] = Field(None, description="Filtrar por código")
+    residency_year: Optional[int] = Field(None, description="Filtrar por año de residencia")
+    supervisor_id: Optional[str] = Field(None, description="Filtrar por supervisor")
+    university: Optional[str] = Field(None, description="Filtrar por universidad")
+    is_active: Optional[bool] = Field(None, description="Filtrar por estado activo")
+```
+
+## Años de Residencia
+
+### Primer Año (R1)
+- **Enfoque**: Fundamentos de patología general
+- **Supervisión**: Estrecha supervisión en todos los casos
+- **Responsabilidades**: Observación y casos básicos
+- **Evaluación**: Evaluaciones frecuentes de progreso
+
+### Segundo Año (R2)
+- **Enfoque**: Patología de órganos específicos
+- **Supervisión**: Supervisión directa con mayor autonomía
+- **Responsabilidades**: Casos de complejidad intermedia
+- **Evaluación**: Evaluaciones periódicas y rotaciones
+
+### Tercer Año (R3)
+- **Enfoque**: Especialización en áreas específicas
+- **Supervisión**: Supervisión selectiva en casos complejos
+- **Responsabilidades**: Casos avanzados y enseñanza a R1/R2
+- **Evaluación**: Preparación para exámenes de certificación
+
+### Cuarto Año (R4)
+- **Enfoque**: Preparación para práctica independiente
+- **Supervisión**: Mínima supervisión, consulta según necesidad
+- **Responsabilidades**: Casos complejos y liderazgo académico
+- **Evaluación**: Evaluación final y preparación para certificación
+
+## Relaciones
+
+### Con Patólogos
+- **Supervisor Asignado**: Relación directa con patólogo supervisor
+- **Consultas**: Acceso a consultas con múltiples patólogos
+- **Evaluaciones**: Evaluaciones periódicas por patólogos senior
+
+### Con Casos
+- **Casos Asignados**: Casos específicos para aprendizaje
+- **Casos Supervisados**: Casos que requieren revisión del supervisor
+- **Casos de Consulta**: Casos complejos para discusión académica
+
+### Con Usuarios
+- **Credenciales**: Acceso al sistema con permisos específicos
+- **Perfil**: Información de acceso y preferencias
+- **Auditoría**: Registro de actividades realizadas
+
+## Casos de Uso Principales
+
+1. **Gestión de Residencia**: Seguimiento del progreso académico
+2. **Asignación de Casos**: Distribución de casos según nivel de formación
+3. **Supervisión Académica**: Coordinación con patólogos supervisores
+4. **Evaluación de Competencias**: Seguimiento de habilidades desarrolladas
+5. **Rotaciones Clínicas**: Gestión de rotaciones por especialidades
+6. **Preparación para Certificación**: Seguimiento hacia certificación profesional
+
+## Niveles de Supervisión
+
+### Supervisión Directa
+- **Aplicable**: R1 y casos complejos en R2
+- **Proceso**: Revisión obligatoria antes de emisión
+- **Documentación**: Registro de supervisión requerido
+
+### Supervisión Selectiva
+- **Aplicable**: R2 avanzado y R3
+- **Proceso**: Revisión de casos seleccionados
+- **Criterios**: Complejidad del caso y experiencia del residente
+
+### Consulta Opcional
+- **Aplicable**: R3 avanzado y R4
+- **Proceso**: Consulta a discreción del residente
+- **Objetivo**: Desarrollo de criterio clínico independiente
+
+## Permisos y Accesos
+
+### Permisos por Año de Residencia
+
+#### R1 - Primer Año
+- Consulta de casos asignados
+- Registro de observaciones preliminares
+- Acceso a material educativo
+- Participación en discusiones de casos
+
+#### R2 - Segundo Año
+- Diagnósticos preliminares con supervisión
+- Acceso a casos de complejidad intermedia
+- Participación en consultas interdisciplinarias
+- Registro de procedimientos realizados
+
+#### R3 - Tercer Año
+- Diagnósticos con supervisión selectiva
+- Acceso a casos complejos
+- Supervisión de residentes junior
+- Participación en actividades de enseñanza
+
+#### R4 - Cuarto Año
+- Diagnósticos con mínima supervisión
+- Acceso a todos los tipos de casos
+- Liderazgo en actividades académicas
+- Preparación de reportes complejos
+
+## Estados del Residente
+
+### Activo
+- En formación activa
+- Acceso completo según año de residencia
+- Participación en todas las actividades
+
+### Rotación Externa
+- Temporalmente en otra institución
+- Acceso limitado al sistema
+- Seguimiento de progreso académico
+
+### Licencia Médica
+- Temporalmente ausente por motivos médicos
+- Sin acceso al sistema
+- Casos reasignados temporalmente
+
+### Suspendido
+- Suspensión académica o disciplinaria
+- Acceso restringido o bloqueado
+- Revisión de casos asignados
+
+### Graduado
+- Completó la residencia exitosamente
+- Acceso histórico a casos trabajados
+- Transición a patólogo certificado
+
+## Evaluación y Seguimiento
+
+### Evaluaciones Periódicas
+```python
+class ResidentEvaluation(BaseModel):
+    resident_id: str
+    evaluator_id: str  # Pathologist ID
+    evaluation_date: datetime
+    rotation: str
+    technical_skills: int  # 1-5 scale
+    diagnostic_accuracy: int  # 1-5 scale
+    communication_skills: int  # 1-5 scale
+    professionalism: int  # 1-5 scale
+    overall_rating: int  # 1-5 scale
+    comments: str
+    recommendations: str
+```
+
+### Métricas de Progreso
+- Número de casos diagnosticados por mes
+- Precisión diagnóstica por tipo de caso
+- Tiempo promedio de diagnóstico
+- Casos que requirieron supervisión adicional
+- Participación en actividades académicas
+
+## Rotaciones Clínicas
+
+### Rotaciones Obligatorias
+- Patología Quirúrgica General
+- Patología Ginecológica
+- Patología Gastrointestinal
+- Patología Pulmonar
+- Patología Dermatológica
+- Patología Hematológica
+- Citopatología
+- Autopsia
+
+### Rotaciones Electivas
+- Patología Pediátrica
+- Neuropatología
+- Patología Cardiovascular
+- Patología Renal
+- Patología Molecular
+- Investigación
+
+## Consideraciones Académicas
+
+### Requisitos de Graduación
+- Completar todas las rotaciones obligatorias
+- Alcanzar competencias mínimas en cada área
+- Aprobar exámenes de certificación
+- Completar requisitos de investigación
+- Demostrar profesionalismo y ética
+
+### Actividades de Enseñanza
+- Presentaciones de casos clínicos
+- Participación en conferencias
+- Supervisión de estudiantes de medicina
+- Contribución a actividades de investigación
+
+## Integración con Sistemas Externos
+
+### Sistema de Evaluación Académica
+```python
+def sync_academic_evaluations(resident_id: str):
+    # Sincronización con sistema académico universitario
+    evaluations = academic_system.get_evaluations(resident_id)
+    return update_resident_progress(resident_id, evaluations)
+```
+
+### Sistema de Certificación
+```python
+def check_certification_requirements(resident_id: str):
+    # Verificación de requisitos para certificación
+    resident = get_resident_by_id(resident_id)
+    return certification_system.check_requirements(resident)
+```
+
+## Consideraciones de Privacidad
+
+### Información Académica
+- Acceso restringido a evaluaciones
+- Confidencialidad de información de progreso
+- Protección de datos de desempeño
+
+### Información Personal
+- Protección de datos personales
+- Acceso limitado a información médica
+- Cumplimiento de normativas educativas
+
+## Backup y Continuidad
+
+### Datos Críticos
+- Información académica del residente
+- Historial de evaluaciones
+- Casos asignados y diagnosticados
+- Progreso en rotaciones
+
+### Plan de Continuidad
+```python
+def ensure_resident_continuity(resident_id: str):
+    # Asegurar continuidad en caso de ausencia
+    resident = get_resident_by_id(resident_id)
+    if not resident.is_active:
+        reassign_pending_cases(resident_id)
+        notify_supervisor(resident.supervisor_id)
+```

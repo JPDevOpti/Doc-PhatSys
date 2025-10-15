@@ -1,0 +1,245 @@
+# Colecciones: Contadores
+
+## Descripción General
+Las colecciones de contadores gestionan la numeración secuencial automática para diferentes entidades del sistema PathSys, garantizando códigos únicos y consecutivos para casos, tickets y aprobaciones.
+
+## Colecciones de Contadores
+
+### 1. case_counters
+Gestiona la numeración secuencial de casos médicos.
+
+### 2. consecutive_tickets  
+Gestiona la numeración secuencial de tickets de soporte.
+
+### 3. approval_counters
+Gestiona la numeración secuencial de solicitudes de aprobación.
+
+## Esquema de Datos Común
+
+### Campos Principales
+
+| Campo | Tipo | Requerido | Descripción |
+|-------|------|-----------|-------------|
+| `_id` | String | Sí | Identificador único (formato: tipo_año) |
+| `year` | Integer | Sí | Año de la numeración |
+| `current_number` | Integer | Sí | Último número asignado |
+| `last_updated` | DateTime | Sí | Fecha de última actualización |
+| `entity_id` | String | No | ID de entidad (solo para case_counters) |
+
+## Estructura por Colección
+
+### case_counters
+```json
+{
+  "_id": "cases_2024_entity123",
+  "year": 2024,
+  "entity_id": "entity123",
+  "current_number": 1547,
+  "last_updated": "2024-01-15T10:30:00Z"
+}
+```
+
+### consecutive_tickets
+```json
+{
+  "_id": "tickets_2024",
+  "year": 2024,
+  "current_number": 89,
+  "last_updated": "2024-01-15T14:22:00Z"
+}
+```
+
+### approval_counters
+```json
+{
+  "_id": "approvals_2024",
+  "year": 2024,
+  "current_number": 234,
+  "last_updated": "2024-01-15T16:45:00Z"
+}
+```
+
+## Patrones de Códigos Generados
+
+### Casos Médicos
+- **Formato**: `C-YYYY-EEEE-NNNN`
+- **Ejemplo**: `C-2024-HOSP-0001`
+- **Componentes**:
+  - `C`: Prefijo para casos
+  - `YYYY`: Año
+  - `EEEE`: Código de entidad (4 caracteres)
+  - `NNNN`: Número secuencial (4 dígitos)
+
+### Tickets de Soporte
+- **Formato**: `T-YYYY-NNN`
+- **Ejemplo**: `T-2024-089`
+- **Componentes**:
+  - `T`: Prefijo para tickets
+  - `YYYY`: Año
+  - `NNN`: Número secuencial (3 dígitos)
+
+### Solicitudes de Aprobación
+- **Formato**: `A-YYYY-NNNN`
+- **Ejemplo**: `A-2024-0234`
+- **Componentes**:
+  - `A`: Prefijo para aprobaciones
+  - `YYYY`: Año
+  - `NNNN`: Número secuencial (4 dígitos)
+
+## Índices Recomendados
+
+```javascript
+// Para case_counters
+db.case_counters.createIndex({ "entity_id": 1, "year": 1 }, { unique: true })
+db.case_counters.createIndex({ "year": -1 })
+
+// Para consecutive_tickets
+db.consecutive_tickets.createIndex({ "year": 1 }, { unique: true })
+
+// Para approval_counters  
+db.approval_counters.createIndex({ "year": 1 }, { unique: true })
+```
+
+## Operaciones Atómicas
+
+### Incremento Seguro
+```javascript
+function getNextNumber(collection, counterId) {
+  return db[collection].findOneAndUpdate(
+    { "_id": counterId },
+    { 
+      "$inc": { "current_number": 1 },
+      "$set": { "last_updated": new Date() }
+    },
+    { 
+      "returnDocument": "after",
+      "upsert": true
+    }
+  );
+}
+```
+
+### Inicialización de Contador
+```javascript
+function initializeCounter(collection, counterId, year, entityId = null) {
+  const doc = {
+    "_id": counterId,
+    "year": year,
+    "current_number": 0,
+    "last_updated": new Date()
+  };
+  
+  if (entityId) {
+    doc.entity_id = entityId;
+  }
+  
+  return db[collection].insertOne(doc);
+}
+```
+
+## Gestión de Años
+
+### Rotación Anual
+Al cambio de año, se crean nuevos documentos de contador:
+
+```javascript
+function createYearlyCounters(newYear) {
+  // Crear contadores para tickets y aprobaciones
+  initializeCounter("consecutive_tickets", `tickets_${newYear}`, newYear);
+  initializeCounter("approval_counters", `approvals_${newYear}`, newYear);
+  
+  // Crear contadores para cada entidad activa
+  const entities = db.entities.find({ "is_active": true });
+  entities.forEach(entity => {
+    const counterId = `cases_${newYear}_${entity._id}`;
+    initializeCounter("case_counters", counterId, newYear, entity._id);
+  });
+}
+```
+
+## Casos de Uso Principales
+
+1. **Generación de Códigos**: Asignación automática de códigos únicos
+2. **Auditoría de Numeración**: Seguimiento de secuencias numéricas
+3. **Reportes de Volumen**: Análisis de cantidad de registros por período
+4. **Migración de Datos**: Mantenimiento de secuencias durante migraciones
+5. **Backup y Restauración**: Preservación de numeración en respaldos
+
+## Consideraciones de Concurrencia
+
+### Problemas Potenciales
+- **Race Conditions**: Múltiples procesos incrementando simultáneamente
+- **Duplicación**: Asignación del mismo número a diferentes registros
+- **Inconsistencia**: Pérdida de sincronización entre contadores
+
+### Soluciones Implementadas
+- **Operaciones Atómicas**: Uso de `findOneAndUpdate` con `$inc`
+- **Transacciones**: Agrupación de operaciones relacionadas
+- **Retry Logic**: Reintento automático en caso de conflictos
+- **Locks Distribuidos**: Bloqueos para operaciones críticas
+
+## Monitoreo y Alertas
+
+### Métricas Importantes
+- Velocidad de incremento por colección
+- Gaps en la numeración secuencial
+- Tiempo de respuesta de operaciones atómicas
+- Errores de concurrencia
+
+### Alertas Configuradas
+- Contador cerca del límite máximo
+- Fallos repetidos en incrementos
+- Inconsistencias en secuencias
+- Rendimiento degradado
+
+## Backup y Recuperación
+
+### Estrategia de Backup
+```javascript
+// Backup de contadores críticos
+function backupCounters() {
+  const collections = ["case_counters", "consecutive_tickets", "approval_counters"];
+  
+  collections.forEach(collection => {
+    const backup = db[collection].find().toArray();
+    // Guardar en sistema de backup
+    saveToBackup(`${collection}_${new Date().toISOString()}`, backup);
+  });
+}
+```
+
+### Recuperación de Secuencias
+```javascript
+function recoverSequence(collection, year, entityId = null) {
+  // Encontrar el último número usado en la colección principal
+  let query = { "created_at": { "$regex": `^${year}` } };
+  if (entityId) query["entity_info.entity_id"] = entityId;
+  
+  const lastRecord = db.cases.findOne(query, { sort: { "case_code": -1 } });
+  const lastNumber = extractNumberFromCode(lastRecord.case_code);
+  
+  // Actualizar contador
+  const counterId = entityId ? `cases_${year}_${entityId}` : `tickets_${year}`;
+  db[collection].updateOne(
+    { "_id": counterId },
+    { "$set": { "current_number": lastNumber } },
+    { "upsert": true }
+  );
+}
+```
+
+## Consideraciones de Rendimiento
+
+- Mantener índices optimizados para consultas frecuentes
+- Implementar cache para contadores activos
+- Monitorear el crecimiento de las colecciones
+- Considerar archivado de contadores antiguos
+- Optimizar operaciones atómicas para alta concurrencia
+
+## Consideraciones de Seguridad
+
+- Validar permisos antes de modificar contadores
+- Auditar todos los cambios en numeración
+- Proteger contra manipulación manual de secuencias
+- Implementar validación de integridad
+- Mantener logs detallados de operaciones críticas

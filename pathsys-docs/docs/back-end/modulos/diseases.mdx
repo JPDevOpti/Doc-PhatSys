@@ -1,5 +1,427 @@
 ---
 id: mod-diseases
 title: Enfermedades
-sidebar_position: 12
+sidebar_position: 8
 ---
+
+# Módulo de Enfermedades
+
+## Objetivo
+
+El módulo de enfermedades gestiona el catálogo de enfermedades y códigos de clasificación médica (CIE-10, CIE-O, etc.) del sistema PathSys. Permite el registro, consulta, búsqueda y administración de enfermedades utilizadas en diagnósticos patológicos, facilitando la estandarización y codificación de diagnósticos médicos.
+
+## Estructura de Archivos
+
+```
+app/modules/diseases/
+├── __init__.py                     # Comentario del módulo
+├── DISEASES_DOCUMENTATION.md      # Documentación técnica detallada
+├── routes/
+│   └── disease_routes.py          # Endpoints REST API
+├── services/
+│   ├── __init__.py               # Exports de servicios
+│   └── disease_service.py        # Lógica de negocio
+├── repositories/
+│   └── disease_repository.py     # Operaciones de base de datos
+├── models/
+│   ├── __init__.py               # Exports de modelos
+│   └── disease.py                # Modelos de datos
+└── schemas/
+    ├── __init__.py               # Exports de esquemas
+    └── disease.py                # Esquemas de validación
+```
+
+## Endpoints API
+
+### Crear Enfermedad
+- **POST** `/diseases/`
+- **Descripción**: Crea una nueva enfermedad en el catálogo
+- **Request Body**: `DiseaseCreateSchema`
+- **Response**: `DiseaseResponseSchema` (200 OK)
+- **Errores**:
+  - 400: Código de enfermedad ya existe
+  - 500: Error interno del servidor
+
+**Ejemplo de uso**:
+```json
+{
+    "table": "CIE10",
+    "code": "A000",
+    "name": "COLERA DEBIDO A VIBRIO CHOLERAE 01, BIOTIPO CHOLERAE",
+    "description": "COLERA",
+    "is_active": true
+}
+```
+
+### Listar Todas las Enfermedades
+- **GET** `/diseases/`
+- **Descripción**: Obtiene lista de enfermedades con paginación y filtros
+- **Query Parameters**:
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 100, max: 15000): Número máximo de registros
+  - `is_active` (opcional): Filtrar por estado activo
+- **Response**: `DiseaseListResponseSchema`
+
+**Ejemplo**: `GET /diseases/?skip=0&limit=50&is_active=true`
+
+### Buscar Enfermedades por Nombre
+- **GET** `/diseases/search/name`
+- **Descripción**: Busca enfermedades por nombre usando expresiones regulares
+- **Query Parameters**:
+  - `q` (requerido): Término de búsqueda por nombre
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 100, max: 15000): Número máximo de registros
+- **Response**: `DiseaseSearchResponseSchema`
+
+**Ejemplo**: `GET /diseases/search/name?q=COLERA&skip=0&limit=20`
+
+### Buscar Enfermedades por Código
+- **GET** `/diseases/search/code`
+- **Descripción**: Busca enfermedades por código usando expresiones regulares
+- **Query Parameters**:
+  - `q` (requerido): Término de búsqueda por código
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 100, max: 15000): Número máximo de registros
+- **Response**: `DiseaseSearchResponseSchema`
+
+**Ejemplo**: `GET /diseases/search/code?q=A00&skip=0&limit=20`
+
+### Obtener Enfermedades por Tabla
+- **GET** `/diseases/table/{table}`
+- **Descripción**: Obtiene enfermedades de una tabla de referencia específica
+- **Path Parameters**:
+  - `table`: Nombre de la tabla de referencia (ej: "CIE10")
+- **Query Parameters**:
+  - `skip` (default: 0): Número de registros a omitir
+  - `limit` (default: 100, max: 15000): Número máximo de registros
+- **Response**: `DiseaseByTableResponseSchema`
+
+**Ejemplo**: `GET /diseases/table/CIE10?skip=0&limit=50`
+
+### Obtener Enfermedad por Código
+- **GET** `/diseases/code/{code}`
+- **Descripción**: Obtiene una enfermedad específica por su código
+- **Path Parameters**:
+  - `code`: Código único de la enfermedad
+- **Response**: `DiseaseResponseSchema`
+- **Errores**:
+  - 404: Enfermedad no encontrada
+  - 500: Error interno del servidor
+
+**Ejemplo**: `GET /diseases/code/A000`
+
+### Eliminar Enfermedad
+- **DELETE** `/diseases/{disease_id}`
+- **Descripción**: Elimina una enfermedad del catálogo (eliminación física)
+- **Path Parameters**:
+  - `disease_id`: ID único de la enfermedad
+- **Response**: `{"message": "Disease deleted successfully"}`
+- **Errores**:
+  - 404: Enfermedad no encontrada
+  - 500: Error interno del servidor
+
+## Esquemas de Datos
+
+### DiseaseBase
+Esquema base para enfermedades:
+```python
+{
+    "table": "string",          # Tabla de referencia (ej: "CIE10")
+    "code": "string",           # Código único de la enfermedad
+    "name": "string",           # Nombre completo de la enfermedad
+    "description": "string",    # Descripción general (opcional)
+    "is_active": "boolean"      # Estado activo/inactivo (default: true)
+}
+```
+
+### DiseaseCreateSchema
+Esquema para crear enfermedades:
+- Todos los campos de `DiseaseBase` son requeridos excepto `description`
+- `is_active` tiene valor por defecto `true`
+- Validación de unicidad del código
+
+### DiseaseResponseSchema
+Esquema de respuesta (hereda de DiseaseBase):
+```python
+{
+    "id": "string",             # ID único generado
+    "table": "string",
+    "code": "string",
+    "name": "string",
+    "description": "string",
+    "is_active": "boolean",
+    "created_at": "datetime",   # Fecha de creación
+    "updated_at": "datetime"    # Fecha de última actualización
+}
+```
+
+### DiseaseListResponseSchema
+Esquema para listado de enfermedades:
+```python
+{
+    "diseases": "List[DiseaseResponseSchema]",  # Lista de enfermedades
+    "total": "integer",                         # Total de registros
+    "skip": "integer",                          # Registros omitidos
+    "limit": "integer"                          # Límite por página
+}
+```
+
+### DiseaseSearchResponseSchema
+Esquema para resultados de búsqueda:
+```python
+{
+    "diseases": "List[DiseaseResponseSchema]",  # Lista de enfermedades encontradas
+    "search_term": "string",                    # Término de búsqueda utilizado
+    "skip": "integer",                          # Registros omitidos
+    "limit": "integer"                          # Límite por página
+}
+```
+
+### DiseaseByTableResponseSchema
+Esquema para enfermedades por tabla:
+```python
+{
+    "diseases": "List[DiseaseResponseSchema]",  # Lista de enfermedades de la tabla
+    "table": "string",                          # Tabla de referencia
+    "skip": "integer",                          # Registros omitidos
+    "limit": "integer"                          # Límite por página
+}
+```
+
+## Lógica de Negocio (DiseaseService)
+
+### Funcionalidades Principales
+
+1. **Creación de Enfermedades**:
+   - Validación de unicidad del código
+   - Manejo de errores de conflicto
+   - Asignación automática de timestamps
+
+2. **Consulta por Código**:
+   - Búsqueda exacta por código único
+   - Manejo de casos no encontrados
+
+3. **Listado con Filtros**:
+   - Paginación configurable (hasta 15,000 registros)
+   - Filtrado por estado activo/inactivo
+   - Por defecto muestra solo enfermedades activas
+
+4. **Búsqueda Avanzada**:
+   - Búsqueda por nombre con regex case-insensitive
+   - Búsqueda por código con regex case-insensitive
+   - Paginación en resultados de búsqueda
+
+5. **Filtrado por Tabla**:
+   - Agrupación por tabla de referencia (CIE-10, CIE-O, etc.)
+   - Paginación específica por tabla
+
+6. **Eliminación**:
+   - Eliminación física del registro
+   - Verificación de existencia antes de eliminar
+
+## Operaciones de Repositorio (DiseaseRepository)
+
+### Métodos Principales
+
+- `create(disease)`: Inserta nueva enfermedad con timestamps
+- `get_by_code(code)`: Busca enfermedad por código exacto
+- `get_all(skip, limit, is_active)`: Lista enfermedades con filtros
+- `search_by_name(query, skip, limit)`: Búsqueda por nombre con regex
+- `search_by_code(query, skip, limit)`: Búsqueda por código con regex
+- `get_by_table(table, skip, limit)`: Filtra por tabla de referencia
+- `delete_by_id(disease_id)`: Elimina enfermedad por ID
+- `count_total(is_active)`: Cuenta total de registros
+
+### Características Técnicas
+
+- **Conversión de ObjectId**: Transformación automática de `_id` a `id` string
+- **Búsqueda con Regex**: Búsquedas case-insensitive y parciales
+- **Paginación Eficiente**: Uso de `skip` y `limit` para grandes volúmenes
+- **Timestamps Automáticos**: Fechas de creación y actualización
+
+## Validaciones y Manejo de Errores
+
+### Validaciones de Entrada
+
+1. **Tabla de Referencia**:
+   - Campo requerido
+   - Identifica el sistema de clasificación (CIE-10, CIE-O, etc.)
+
+2. **Código de Enfermedad**:
+   - Campo requerido
+   - Debe ser único en el sistema
+   - Utilizado como identificador principal
+
+3. **Nombre de Enfermedad**:
+   - Campo requerido
+   - Descripción completa de la enfermedad
+
+4. **Descripción**:
+   - Campo opcional
+   - Información adicional o categoría
+
+### Manejo de Errores
+
+- **BadRequestError (400)**: Código de enfermedad duplicado
+- **NotFoundError (404)**: Enfermedad no encontrada
+- **Internal Server Error (500)**: Errores no controlados
+- **Validation Error (422)**: Datos de entrada inválidos
+
+## Búsqueda Avanzada
+
+### Tipos de Búsqueda
+
+1. **Búsqueda por Nombre**:
+   - Utiliza expresiones regulares case-insensitive
+   - Búsqueda parcial en el campo `name`
+   - Ideal para encontrar enfermedades por descripción
+
+2. **Búsqueda por Código**:
+   - Utiliza expresiones regulares case-insensitive
+   - Búsqueda parcial en el campo `code`
+   - Útil para códigos CIE-10 parciales
+
+3. **Filtrado por Tabla**:
+   - Agrupa enfermedades por sistema de clasificación
+   - Permite navegación organizada del catálogo
+
+### Características de Búsqueda
+
+- **Case-insensitive**: No distingue mayúsculas/minúsculas
+- **Búsqueda parcial**: Encuentra coincidencias parciales
+- **Paginación**: Control de resultados con `skip` y `limit`
+- **Alto rendimiento**: Optimizada para grandes catálogos (hasta 15,000 registros)
+
+## Integración con Otros Módulos
+
+### Módulos Relacionados
+
+1. **Casos**: Asignación de diagnósticos a casos médicos
+2. **Patólogos**: Selección de enfermedades en diagnósticos
+3. **Reportes**: Estadísticas y análisis por enfermedad
+4. **Facturación**: Códigos para facturación médica
+
+### Consideraciones de Integración
+
+- Los códigos de enfermedad deben ser estables y únicos
+- La eliminación debe considerar referencias en diagnósticos
+- El estado `is_active` afecta la disponibilidad en otros procesos
+- Soporte para múltiples sistemas de clasificación (CIE-10, CIE-O)
+
+## Importación Masiva de Datos
+
+### Script de Importación
+
+El módulo incluye un script para importación masiva desde archivos Excel:
+
+```bash
+# Modo de prueba (solo vista previa)
+python Back-End/scripts/import_diseases.py --dry-run
+
+# Importación real
+python Back-End/scripts/import_diseases.py
+
+# Especificar archivo directamente
+python Back-End/scripts/import_diseases.py --file "path/to/file.xlsx"
+```
+
+### Formato de Archivo Excel
+
+Columnas requeridas:
+- **Table**: Tabla de referencia (ej: "CIE10")
+- **Code**: Código único de la enfermedad
+- **Name**: Nombre completo de la enfermedad
+- **Description**: Descripción o categoría
+
+## Optimizaciones de Base de Datos
+
+### Índices Recomendados
+
+```javascript
+// MongoDB indexes
+db.diseases.createIndex({ "code": 1 }, { unique: true })
+db.diseases.createIndex({ "table": 1 })
+db.diseases.createIndex({ "is_active": 1 })
+db.diseases.createIndex({ "created_at": -1 })
+db.diseases.createIndex({ 
+    "name": "text", 
+    "code": "text", 
+    "description": "text" 
+})
+```
+
+### Consideraciones de Rendimiento
+
+- Búsquedas optimizadas con índices de texto completo
+- Paginación eficiente para grandes catálogos
+- Límite máximo de 15,000 registros por consulta
+- Índice único en código para prevenir duplicados
+
+## Variables de Configuración
+
+El módulo utiliza las siguientes configuraciones del sistema:
+
+- **Database Connection**: Conexión a MongoDB
+- **Pagination Limits**: Límites máximos de registros (15,000)
+- **Logging Level**: Nivel de logging para auditoría
+- **Search Timeout**: Tiempo límite para búsquedas complejas
+
+## Casos de Uso Comunes
+
+### 1. Registro de Nueva Enfermedad CIE-10
+```python
+# Crear enfermedad del catálogo CIE-10
+disease_data = {
+    "table": "CIE10",
+    "code": "A000",
+    "name": "COLERA DEBIDO A VIBRIO CHOLERAE 01, BIOTIPO CHOLERAE",
+    "description": "COLERA",
+    "is_active": True
+}
+```
+
+### 2. Búsqueda de Enfermedades para Diagnóstico
+```python
+# Buscar enfermedades por término clínico
+search_params = {
+    "q": "diabetes",
+    "skip": 0,
+    "limit": 20
+}
+```
+
+### 3. Consulta de Catálogo CIE-10
+```python
+# Obtener enfermedades del catálogo CIE-10
+table_params = {
+    "table": "CIE10",
+    "skip": 0,
+    "limit": 100
+}
+```
+
+### 4. Verificación de Código de Enfermedad
+```python
+# Verificar existencia de código específico
+code = "A000"
+# GET /diseases/code/A000
+```
+
+### 5. Importación Masiva desde Excel
+```bash
+# Importar catálogo completo CIE-10
+python scripts/import_diseases.py --file "catalogo_cie10.xlsx"
+```
+
+## Características Técnicas Destacadas
+
+- **Códigos Únicos**: Sistema de códigos únicos por enfermedad
+- **Múltiples Clasificaciones**: Soporte para CIE-10, CIE-O y otros sistemas
+- **Búsqueda Avanzada**: Búsqueda por nombre y código con regex
+- **Paginación Masiva**: Manejo eficiente de hasta 15,000 registros
+- **Importación Masiva**: Script para carga de catálogos completos
+- **Eliminación Física**: Eliminación definitiva de registros
+- **Timestamps Automáticos**: Control de fechas de creación y actualización
+- **Validaciones Robustas**: Prevención de códigos duplicados
+
+El módulo de enfermedades proporciona una base sólida para la gestión de catálogos médicos en PathSys, con funcionalidades completas de CRUD, búsqueda avanzada, importación masiva y integración con sistemas de clasificación internacional como CIE-10.

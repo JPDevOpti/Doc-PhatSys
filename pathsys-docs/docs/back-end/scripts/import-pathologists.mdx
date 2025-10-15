@@ -1,0 +1,317 @@
+---
+id: import-pathologists
+title: Import Pathologists
+sidebar_position: 2
+---
+
+# Script de Importación de Patólogos
+
+El script `import_pathologists.py` es responsable de crear usuarios patólogos en el sistema PathSys. Este script importa médicos especialistas en patología y residentes, generando automáticamente códigos únicos, iniciales y emails basados en sus nombres y códigos identificadores.
+
+## Objetivo
+
+Poblar el sistema con médicos patólogos y residentes de patología, estableciendo sus perfiles profesionales, credenciales de acceso y códigos únicos para identificación en el sistema.
+
+## Ubicación del Archivo
+
+```
+Back-End/Scripts/import_pathologists.py
+```
+
+## Funcionalidad Principal
+
+### Creación de Patólogos
+El script crea usuarios patólogos con la siguiente información:
+
+- **Datos profesionales**: Nombre completo, especialidad, código único
+- **Credenciales**: Email generado automáticamente, contraseña temporal
+- **Identificación**: Iniciales derivadas del nombre, código de patólogo
+- **Estado**: Usuarios activos por defecto
+
+### Generación Automática de Datos
+
+#### Iniciales
+```python
+def generate_initials(name: str) -> str:
+    """Generate initials from pathologist name"""
+    words = name.split()
+    initials = ''.join([word[0].upper() for word in words if word])
+    return initials[:3]  # Maximum 3 characters
+```
+
+#### Email
+```python
+def generate_email(code: str, name: str) -> str:
+    """Generate email from code and name"""
+    clean_name = name.lower().replace(' ', '.')
+    return f"{code.lower()}.{clean_name}@pathsys.com"
+```
+
+### Patólogos Predefinidos
+
+El script incluye una lista de patólogos con sus códigos y nombres:
+
+```python
+pathologists_data = [
+    {
+        "code": "PAT001",
+        "name": "Dr. María Elena Rodríguez",
+        "specialty": "Anatomía Patológica"
+    },
+    {
+        "code": "PAT002", 
+        "name": "Dr. Carlos Alberto Mendoza",
+        "specialty": "Patología Oncológica"
+    },
+    {
+        "code": "RES001",
+        "name": "Dr. Ana Sofía Herrera",
+        "specialty": "Residente Patología"
+    },
+    {
+        "code": "RES002",
+        "name": "Dr. Luis Fernando Castro",
+        "specialty": "Residente Patología"
+    }
+    # ... más patólogos
+]
+```
+
+## Dependencias y Servicios
+
+### Servicios Utilizados
+- **`PathologistService`**: Servicio principal para gestión de patólogos
+- **`get_pathologist_service()`**: Factory para obtener instancia del servicio
+
+### Esquemas de Datos
+- **`PathologistCreate`**: Schema Pydantic para validación de datos de patólogos
+
+### Importaciones Principales
+```python
+from app.modules.pathologists.services.pathologist_service import get_pathologist_service
+from app.modules.pathologists.schemas.pathologist import PathologistCreate
+```
+
+## Estructura del Script
+
+### 1. Configuración Inicial
+```python
+import asyncio
+from typing import List, Dict
+import logging
+import re
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+```
+
+### 2. Funciones Auxiliares
+```python
+def normalize_text(text: str) -> str:
+    """Normalize text for consistent formatting"""
+    return re.sub(r'\s+', ' ', text.strip())
+
+def generate_initials(name: str) -> str:
+    """Generate initials from pathologist name"""
+    words = name.split()
+    return ''.join([word[0].upper() for word in words if word])[:3]
+
+def generate_email(code: str, name: str) -> str:
+    """Generate email from code and name"""
+    clean_name = name.lower().replace(' ', '.').replace('dr.', '')
+    return f"{code.lower()}.{clean_name}@pathsys.com"
+```
+
+### 3. Función Principal
+```python
+async def import_pathologists():
+    """Import predefined pathologists into the system"""
+    service = get_pathologist_service()
+    
+    for pathologist_data in PATHOLOGISTS_DATA:
+        try:
+            # Generate derived fields
+            initials = generate_initials(pathologist_data["name"])
+            email = generate_email(pathologist_data["code"], pathologist_data["name"])
+            
+            # Create pathologist schema
+            pathologist_create = PathologistCreate(
+                code=pathologist_data["code"],
+                name=normalize_text(pathologist_data["name"]),
+                initials=initials,
+                email=email,
+                specialty=pathologist_data["specialty"],
+                password="pathologist123"  # Temporary password
+            )
+            
+            # Check if pathologist already exists
+            existing = await service.get_pathologist_by_code(pathologist_data["code"])
+            if existing:
+                logger.info(f"Pathologist {pathologist_data['code']} already exists")
+                continue
+            
+            # Create new pathologist
+            result = await service.create_pathologist(pathologist_create)
+            logger.info(f"Created pathologist: {result.code} - {result.name}")
+            
+        except Exception as e:
+            logger.error(f"Error creating pathologist {pathologist_data['code']}: {e}")
+```
+
+## Características Técnicas
+
+### 🔧 Generación Automática
+- **Iniciales**: Extracción automática de iniciales del nombre
+- **Email**: Composición basada en código y nombre normalizado
+- **Códigos únicos**: Validación de unicidad de códigos de patólogo
+- **Normalización**: Limpieza y formato consistente de texto
+
+### 🔒 Validaciones
+- **Código único**: Verificación de códigos no duplicados
+- **Email único**: Control de emails no duplicados
+- **Formato de datos**: Validación mediante schemas Pydantic
+- **Existencia previa**: Verificación antes de crear
+
+### 🛡️ Seguridad
+- **Contraseñas temporales**: Contraseñas que deben cambiarse en primer acceso
+- **Validación de entrada**: Sanitización de datos de entrada
+- **Manejo de errores**: Control robusto de excepciones
+- **Logging seguro**: Registro sin exponer credenciales
+
+### ⚡ Rendimiento
+- **Operaciones asíncronas**: Procesamiento no bloqueante
+- **Verificación previa**: Evita duplicados innecesarios
+- **Transacciones atómicas**: Consistencia de datos
+- **Procesamiento en lote**: Importación eficiente de múltiples patólogos
+
+## Uso del Script
+
+### Ejecución Básica
+```bash
+# Desde el directorio raíz del proyecto
+python3 Scripts/import_pathologists.py
+```
+
+### Ejecución con Modo Dry-Run
+```bash
+# Previsualización sin cambios reales
+python3 Scripts/import_pathologists.py --dry-run
+```
+
+### Verificación de Resultados
+```bash
+# Verificar patólogos creados
+python3 -c "
+from app.modules.pathologists.services.pathologist_service import get_pathologist_service
+import asyncio
+
+async def check_pathologists():
+    service = get_pathologist_service()
+    pathologists = await service.list_pathologists()
+    print(f'Total pathologists: {len(pathologists)}')
+    for path in pathologists:
+        print(f'- {path.code}: {path.name} ({path.email})')
+
+asyncio.run(check_pathologists())
+"
+```
+
+## Casos de Uso
+
+### 1. Inicialización del Sistema
+```python
+# Cargar patólogos iniciales
+await import_pathologists()
+print("Patólogos importados exitosamente")
+```
+
+### 2. Adición de Nuevos Patólogos
+```python
+# Agregar nuevo patólogo a la lista
+new_pathologist = {
+    "code": "PAT010",
+    "name": "Dr. Patricia Morales",
+    "specialty": "Patología Pediátrica"
+}
+PATHOLOGISTS_DATA.append(new_pathologist)
+```
+
+### 3. Importación por Especialidad
+```python
+# Filtrar por especialidad
+oncology_pathologists = [
+    p for p in PATHOLOGISTS_DATA 
+    if "oncológica" in p["specialty"].lower()
+]
+```
+
+## Tipos de Patólogos
+
+### Patólogos Especialistas (PAT)
+- **Código**: PAT001, PAT002, etc.
+- **Especialidad**: Anatomía Patológica, Patología Oncológica
+- **Permisos**: Completos para diagnósticos y supervisión
+- **Responsabilidades**: Diagnósticos finales, supervisión de residentes
+
+### Residentes de Patología (RES)
+- **Código**: RES001, RES002, etc.
+- **Especialidad**: Residente Patología
+- **Permisos**: Limitados, requieren supervisión
+- **Responsabilidades**: Diagnósticos preliminares, aprendizaje
+
+### Patólogos Subespecialistas
+- **Código**: SUB001, SUB002, etc.
+- **Especialidad**: Dermatopatología, Neuropatología, etc.
+- **Permisos**: Especializados en su área
+- **Responsabilidades**: Casos complejos de su especialidad
+
+## Consideraciones Importantes
+
+### 🚨 Seguridad en Producción
+- **Cambiar contraseñas**: Las contraseñas temporales DEBEN cambiarse
+- **Emails institucionales**: Usar dominio de la institución
+- **Códigos reales**: Usar códigos de registro médico válidos
+- **Verificación de identidad**: Validar identidad de patólogos
+
+### 🔧 Configuración Recomendada
+- **Variables de entorno**: Usar para configuración de emails
+- **Archivo de configuración**: Externalizar datos de patólogos
+- **Integración LDAP**: Conectar con directorio institucional
+- **Validación médica**: Verificar registro profesional
+
+### 📋 Requisitos Previos
+- Base de datos MongoDB configurada y accesible
+- Servicios de patólogos inicializados
+- Dependencias de Python instaladas
+- Variables de entorno configuradas
+
+### ⚠️ Limitaciones
+- Contraseñas temporales en texto plano
+- Datos hardcodeados (considerar externalizar)
+- Sin validación de registro médico
+- Sin integración con sistemas externos de credenciales
+
+## Integración con Otros Módulos
+
+### Módulo de Usuarios
+- Los patólogos son un tipo especializado de usuario
+- Heredan funcionalidades base de autenticación
+- Tienen permisos específicos para diagnósticos
+
+### Módulo de Casos
+- Los patólogos pueden ser asignados a casos
+- Realizan diagnósticos y reportes
+- Supervisan el trabajo de residentes
+
+### Módulo de Reportes
+- Generan reportes patológicos
+- Firman digitalmente los diagnósticos
+- Mantienen historial de casos atendidos
+
+### Módulo de Auditoría
+- Registra la creación de patólogos
+- Mantiene historial de cambios
+- Facilita trazabilidad de diagnósticos
+
+Este script es fundamental para establecer el equipo médico especializado que utilizará PathSys para realizar diagnósticos patológicos y gestionar casos clínicos.

@@ -1,0 +1,382 @@
+# Docker
+
+## Descripción General
+
+PathSys utiliza Docker para containerizar todos sus servicios, facilitando el desarrollo, testing y despliegue. La arquitectura está diseñada para ser escalable, mantenible y fácil de configurar tanto en entornos de desarrollo como de producción.
+
+## Arquitectura de Contenedores
+
+### Servicios Core
+- **MongoDB**: Base de datos principal con configuración optimizada
+- **Redis**: Sistema de cache y gestión de sesiones
+- **PathSys API**: Backend desarrollado en FastAPI/Python
+- **PathSys Frontend**: Aplicación web en React/Next.js
+
+### Servicios de Soporte
+- **Mongo Express**: Interfaz web para administración de MongoDB
+- **Nginx**: Load balancer y proxy reverso (producción)
+- **Prometheus/Grafana**: Monitoreo y métricas (opcional)
+
+## Configuración Docker Compose
+
+### Estructura Principal
+
+El sistema utiliza múltiples archivos de Docker Compose para diferentes entornos:
+
+- `docker-compose.yml`: Configuración base
+- `docker-compose.override.yml`: Configuración de desarrollo (se aplica automáticamente)
+- `docker-compose.prod.yml`: Configuración de producción
+
+### Configuración Base (docker-compose.yml)
+
+```yaml
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: pathsys_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: pathsys
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongodb/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - pathsys_network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: pathsys_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pathsys_network
+
+  pathsys-api:
+    build:
+      context: ./Back-End
+      dockerfile: Dockerfile
+    container_name: pathsys_api
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://pathsys_user:${PATHSYS_DB_PASSWORD}@mongodb:27017/pathsys
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - pathsys_network
+
+  pathsys-frontend:
+    build:
+      context: ./Front-End
+      dockerfile: Dockerfile
+    container_name: pathsys_frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - pathsys-api
+    networks:
+      - pathsys_network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  pathsys_network:
+    driver: bridge
+```
+
+### Configuración de Desarrollo
+
+El archivo `docker-compose.override.yml` se aplica automáticamente en desarrollo y habilita:
+
+- **Hot reload** para el backend y frontend
+- **Volúmenes de desarrollo** para sincronización de código
+- **Logs detallados** para debugging
+- **Mongo Express** para administración visual de la base de datos
+
+### Configuración de Producción
+
+Para producción, se utiliza `docker-compose.prod.yml` que incluye:
+
+- **Límites de recursos** para cada contenedor
+- **Múltiples réplicas** para alta disponibilidad
+- **Nginx como load balancer**
+- **Configuración de SSL/TLS**
+- **Optimizaciones de rendimiento**
+
+## Configuración de MongoDB
+
+### Inicialización Automática
+
+MongoDB se configura automáticamente al iniciar por primera vez:
+
+1. **Creación de usuario de aplicación** con permisos específicos
+2. **Configuración de colecciones** con validación de esquemas
+3. **Creación de índices** para optimizar consultas
+4. **Datos de prueba** (solo en desarrollo)
+
+### Script de Inicialización Ejemplo
+
+```javascript
+// docker/mongodb/init/01-init-pathsys.js
+db = db.getSiblingDB('pathsys');
+
+// Create application user
+db.createUser({
+  user: 'pathsys_user',
+  pwd: process.env.PATHSYS_DB_PASSWORD,
+  roles: [{ role: 'readWrite', db: 'pathsys' }]
+});
+
+// Initialize essential collections
+db.createCollection('patients', {
+  validator: {
+    $jsonSchema: {
+      bsonType: 'object',
+      required: ['identification', 'patient_name', 'birth_date']
+    }
+  }
+});
+
+// Create essential indexes
+db.patients.createIndex({ 'identification': 1 }, { unique: true });
+```
+
+## Variables de Entorno
+
+### Configuración Requerida
+
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+
+```bash
+# Database Configuration
+MONGO_ROOT_PASSWORD=your_secure_password
+PATHSYS_DB_PASSWORD=pathsys_secure_password
+
+# Application Secrets
+JWT_SECRET=your_jwt_secret_key
+NEXTAUTH_SECRET=your_nextauth_secret
+
+# Optional: Mongo Express (Development)
+MONGO_EXPRESS_USER=admin
+MONGO_EXPRESS_PASSWORD=admin_password
+```
+
+### Seguridad en Producción
+
+Para producción, utiliza gestores de secretos como:
+- **Docker Secrets**
+- **Kubernetes Secrets**
+- **AWS Secrets Manager**
+- **Azure Key Vault**
+
+## Scripts de Gestión
+
+### Comandos Básicos
+
+```bash
+# Iniciar todos los servicios
+docker-compose up -d
+
+# Ver logs en tiempo real
+docker-compose logs -f
+
+# Detener servicios
+docker-compose down
+
+# Reconstruir contenedores
+docker-compose build --no-cache
+```
+
+### Scripts Automatizados
+
+El proyecto incluye scripts para facilitar la gestión:
+
+- `start.sh`: Inicia el entorno de desarrollo
+- `stop.sh`: Detiene todos los servicios
+- `reset.sh`: Reinicia completamente el entorno
+- `backup.sh`: Crea respaldos de la base de datos
+- `restore.sh`: Restaura respaldos
+
+## Dockerfiles
+
+### Backend (FastAPI/Python)
+
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application
+COPY . .
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Frontend (React/Next.js)
+
+```dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Build application
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+## Monitoreo y Logs
+
+### Logs Centralizados
+
+Todos los contenedores están configurados para enviar logs a stdout/stderr, permitiendo:
+
+- **Agregación centralizada** con herramientas como ELK Stack
+- **Rotación automática** de logs
+- **Filtrado por servicio** usando Docker Compose
+
+### Health Checks
+
+Cada servicio incluye health checks para:
+
+- **Detección automática** de fallos
+- **Reinicio automático** de contenedores no saludables
+- **Integración con orquestadores** como Kubernetes
+
+### Métricas (Opcional)
+
+Para entornos de producción, se puede habilitar monitoreo con:
+
+- **Prometheus**: Recolección de métricas
+- **Grafana**: Visualización de dashboards
+- **MongoDB Exporter**: Métricas específicas de base de datos
+
+## Troubleshooting
+
+### Problemas Comunes
+
+#### MongoDB no inicia
+```bash
+# Verificar logs
+docker-compose logs mongodb
+
+# Limpiar volúmenes corruptos
+docker-compose down -v
+docker volume prune -f
+```
+
+#### Problemas de conectividad
+```bash
+# Verificar red
+docker network inspect pathsys_pathsys_network
+
+# Probar conectividad entre contenedores
+docker exec pathsys_api ping mongodb
+```
+
+#### Problemas de rendimiento
+```bash
+# Monitorear recursos
+docker stats
+
+# Verificar logs de aplicación
+docker-compose logs -f pathsys-api
+```
+
+### Comandos Útiles
+
+```bash
+# Ejecutar comandos en contenedores
+docker exec -it pathsys_mongodb mongosh
+docker exec -it pathsys_api bash
+
+# Limpiar sistema Docker
+docker system prune -a
+
+# Verificar estado de servicios
+docker-compose ps
+```
+
+## Mejores Prácticas
+
+### Desarrollo
+- Utilizar volúmenes para hot reload
+- Configurar health checks apropiados
+- Mantener logs estructurados
+- Usar redes personalizadas para aislamiento
+
+### Producción
+- Especificar versiones exactas de imágenes
+- Configurar límites de recursos
+- Implementar gestión de secretos
+- Usar multi-stage builds para optimizar tamaño
+- Configurar políticas de reinicio apropiadas
+
+### Seguridad
+- No exponer puertos innecesarios
+- Usar usuarios no-root en contenedores
+- Escanear imágenes por vulnerabilidades
+- Rotar secretos regularmente
+- Implementar network policies
+
+## Despliegue
+
+### Desarrollo Local
+```bash
+# Clonar repositorio
+git clone <repository-url>
+cd pathsys
+
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con valores apropiados
+
+# Iniciar servicios
+./start.sh
+```
+
+### Producción
+```bash
+# Usar configuración de producción
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Verificar estado
+docker-compose ps
+docker-compose logs
+```
+
+La configuración Docker de PathSys está diseñada para ser simple de usar en desarrollo y robusta en producción, proporcionando una base sólida para el crecimiento y escalabilidad del sistema.

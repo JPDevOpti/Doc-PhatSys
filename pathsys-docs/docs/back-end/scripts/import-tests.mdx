@@ -1,0 +1,410 @@
+---
+id: import-tests
+title: Import Tests
+sidebar_position: 5
+---
+
+# Script de Importación de Pruebas
+
+El script `import_tests.py` es responsable de crear tipos de pruebas y exámenes patológicos en el sistema PathSys. Este script importa un catálogo predefinido de estudios anatomopatológicos, incluyendo biopsias, citologías, inmunohistoquímicas, coloraciones especiales y autopsias.
+
+## Objetivo
+
+Poblar el sistema con un catálogo completo de pruebas y estudios patológicos que pueden ser solicitados y realizados en el laboratorio, estableciendo códigos estándar, nombres descriptivos, tiempos de procesamiento y descripciones detalladas de cada procedimiento.
+
+## Ubicación del Archivo
+
+```
+Back-End/Scripts/import_tests.py
+```
+
+## Funcionalidad Principal
+
+### Creación de Pruebas Patológicas
+El script crea pruebas con la siguiente información:
+
+- **Códigos de prueba**: Códigos numéricos estándar (ej: 898101, 898807)
+- **Nombres descriptivos**: Denominaciones técnicas de cada estudio
+- **Descripciones detalladas**: Explicación completa del procedimiento
+- **Tiempos de procesamiento**: Días requeridos para completar el estudio
+- **Estado activo**: Pruebas disponibles para solicitar
+
+### Tipos de Pruebas Incluidas
+
+#### Estudios de Coloración Básica
+```python
+{
+    "code": "898101",
+    "name": "Estudio de Coloración Básica en Biopsia",
+    "desc": "Biopsia simple un (1) frasco con uno o varios fragmentos de tejido hasta 3 cm/cc. Ejemplos: endometrio, cuña de cérvix, cuña de piel, cureaje, tru-cut, biopsia renal, biopsia hepática, biopsias de colón o estómago."
+}
+```
+
+#### Estudios Inmunohistoquímicos
+```python
+{
+    "code": "898807",
+    "name": "Estudio Anatomopatológico de Marcación Inmunohistoquímica",
+    "desc": "Inmunohistoquímica básica (específico): cada marcador en bloque de parafina o placa cargada. Ejemplo: CD3, CKIT, actina de músculo liso, S100, HMB45, etc."
+}
+```
+
+#### Estudios Citológicos
+```python
+{
+    "code": "898003",
+    "name": "Estudio de Coloración Básica en Citología por Aspiración de Cualquier Tejido u Órgano - Aspirado (BACAF)",
+    "desc": "Ejemplo: tiroides, ganglio linfático, mama, etc."
+}
+```
+
+#### Estudios Post-mortem
+```python
+{
+    "code": "898301",
+    "name": "Autopsia Completa - Necropsia (Neonatos en Adelante)",
+    "desc": "Incluye disección del cadáver, estudio macroscópico, microscópico, correlación clínico-patológico y diagnóstico final."
+}
+```
+
+## Dependencias y Servicios
+
+### Servicios Utilizados
+- **`TestService`**: Servicio principal para gestión de pruebas
+- **`get_test_service()`**: Factory para obtener instancia del servicio
+
+### Esquemas de Datos
+- **`TestCreate`**: Schema Pydantic para validación de datos de pruebas
+
+### Importaciones Principales
+```python
+from app.modules.tests.services.test_service import get_test_service
+from app.modules.tests.schemas.test import TestCreate
+from app.config.database import get_database, close_mongo_connection
+```
+
+## Estructura del Script
+
+### 1. Configuración Inicial
+```python
+import sys
+import os
+import asyncio
+import argparse
+from typing import Dict, List, Tuple
+from datetime import datetime
+
+# Setup logging and path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+```
+
+### 2. Datos de Pruebas Predefinidas
+```python
+RAW_TEST_ROWS: List[Dict[str, str]] = [
+    {
+        "code": "898101",
+        "name": "Estudio de Coloración Básica en Biopsia",
+        "desc": "Biopsia simple un (1) frasco con uno o varios fragmentos..."
+    },
+    {
+        "code": "898807",
+        "name": "Estudio Anatomopatológico de Marcación Inmunohistoquímica",
+        "desc": "Inmunohistoquímica básica (específico): cada marcador..."
+    }
+    # ... más pruebas
+]
+```
+
+### 3. Funciones de Normalización
+```python
+def normalize_text(text: str) -> str:
+    """Normalize text for consistent formatting"""
+    if text is None:
+        return None
+    return " ".join(str(text).split()).strip()
+
+def coalesce_rows(rows: List[Dict[str, str]]) -> Dict[str, Dict[str, str]]:
+    """Merge duplicate codes and combine descriptions"""
+    merged: Dict[str, Dict[str, str]] = {}
+    for row in rows:
+        code = str(row.get("code", "")).strip()
+        name = normalize_text(row.get("name"))
+        desc = row.get("desc")
+        
+        if not code or not name:
+            continue
+            
+        if code not in merged:
+            merged[code] = {"name": name, "desc": desc or None}
+        else:
+            # Merge descriptions if different
+            existing_desc = merged[code].get("desc")
+            if desc and desc != existing_desc:
+                if existing_desc:
+                    merged[code]["desc"] = f"{existing_desc}\n{desc}"
+                else:
+                    merged[code]["desc"] = desc
+    
+    return merged
+```
+
+### 4. Función Principal de Importación
+```python
+async def import_tests(dry_run: bool) -> Tuple[int, int]:
+    """Import predefined tests into the system"""
+    created = 0
+    skipped = 0
+    errors = 0
+    tiempo_dias = 6  # Default processing time: 6 days
+    
+    merged = coalesce_rows(RAW_TEST_ROWS)
+    
+    # Display import summary
+    print(f"{'='*60}")
+    print("TEST IMPORT")
+    print(f"{'='*60}")
+    print(f"Mode: {'DRY-RUN (no changes)' if dry_run else 'REAL EXECUTION'}")
+    print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Total tests to process: {len(merged)}")
+    print(f"Default time: {tiempo_dias} days")
+    print(f"{'='*60}")
+    
+    if dry_run:
+        # Dry-run mode: only show what would be done
+        for i, (code, data) in enumerate(merged.items(), 1):
+            print(f"\n[{i}/{len(merged)}] Processing: {code}")
+            print(f"  Name: {data['name']}")
+            print(f"  Time: {tiempo_dias} days")
+            print(f"  Description: {len(data.get('desc') or '')} characters")
+            print(f"  [DRY-RUN] Would create test: {code}")
+            created += 1
+        return created, skipped
+    
+    # Real execution
+    db = await get_database()
+    try:
+        service = get_test_service(db)
+        
+        for i, (code, data) in enumerate(merged.items(), 1):
+            print(f"\n[{i}/{len(merged)}] Processing: {code}")
+            print(f"  Name: {data['name']}")
+            print(f"  Time: {tiempo_dias} days")
+            
+            try:
+                # Validations
+                if not code or not code.strip():
+                    print(f"  [SKIP] Empty or invalid code")
+                    skipped += 1
+                    continue
+                
+                if not data['name'] or not data['name'].strip():
+                    print(f"  [SKIP] Empty or invalid name")
+                    skipped += 1
+                    continue
+                
+                # Validate code length (1-20 characters)
+                if len(code) < 1 or len(code) > 20:
+                    print(f"  [SKIP] Code must be between 1 and 20 characters")
+                    skipped += 1
+                    continue
+                
+                # Validate name length (1-200 characters)
+                if len(data['name']) < 1 or len(data['name']) > 200:
+                    print(f"  [SKIP] Name must be between 1 and 200 characters")
+                    skipped += 1
+                    continue
+                
+                # Validate description length (max 500 characters)
+                if data.get('desc') and len(data['desc']) > 500:
+                    print(f"  [SKIP] Description cannot exceed 500 characters")
+                    skipped += 1
+                    continue
+                
+                # Create test payload
+                payload = TestCreate(
+                    name=data["name"],
+                    test_code=code,
+                    description=data.get("desc"),
+                    time=tiempo_dias,
+                    price=0.0,
+                    is_active=True,
+                )
+                
+                await service.create_test(payload)
+                print(f"  [OK] Test created successfully")
+                print(f"    - Code: {code}")
+                print(f"    - Name: {data['name']}")
+                print(f"    - Time: {tiempo_dias} days")
+                created += 1
+                
+            except ValueError as e:
+                print(f"  [SKIP] Validation error: {str(e)}")
+                skipped += 1
+            except Exception as e:
+                print(f"  [ERROR] Unexpected error: {str(e)}")
+                errors += 1
+        
+        return created, skipped
+    finally:
+        await close_mongo_connection()
+```
+
+## Características Técnicas
+
+### Validaciones Robustas
+- **Código único**: Verificación de códigos no duplicados
+- **Longitud de campos**: Control de límites de caracteres
+- **Datos obligatorios**: Verificación de campos requeridos
+- **Formato de entrada**: Sanitización de datos
+
+### Deduplicación Inteligente
+- **Fusión de códigos**: Combinación de entradas duplicadas
+- **Merge de descripciones**: Unión de descripciones diferentes
+- **Preservación de datos**: Mantiene la información más completa
+- **Logging detallado**: Registro de operaciones de fusión
+
+### Modo Dry-Run
+- **Previsualización**: Muestra cambios sin ejecutar
+- **Validación previa**: Verifica datos antes de importar
+- **Estadísticas**: Cuenta de registros a procesar
+- **Seguridad**: Previene cambios accidentales
+
+### Manejo de Errores
+- **Control de excepciones**: Captura errores específicos
+- **Continuidad**: Procesa registros restantes tras errores
+- **Logging detallado**: Registro completo de errores
+- **Estadísticas finales**: Resumen de operaciones
+
+## Uso del Script
+
+### Ejecución Básica
+```bash
+# Desde el directorio raíz del proyecto
+python3 Scripts/import_tests.py
+```
+
+### Ejecución con Modo Dry-Run
+```bash
+# Previsualización sin cambios reales
+python3 Scripts/import_tests.py --dry-run
+```
+
+### Verificación de Resultados
+```bash
+# Verificar pruebas creadas
+python3 -c "
+from app.modules.tests.services.test_service import get_test_service
+from app.config.database import get_database
+import asyncio
+
+async def check_tests():
+    db = await get_database()
+    service = get_test_service(db)
+    tests = await service.list_tests()
+    print(f'Total tests: {len(tests)}')
+    for test in tests[:10]:  # Show first 10
+        print(f'- {test.test_code}: {test.name} ({test.time} days)')
+
+asyncio.run(check_tests())
+"
+```
+
+## Casos de Uso
+
+### 1. Inicialización del Sistema
+```python
+# Cargar catálogo completo de pruebas
+await import_tests(dry_run=False)
+print("Catálogo de pruebas importado exitosamente")
+```
+
+### 2. Validación de Datos
+```python
+# Verificar datos antes de importar
+await import_tests(dry_run=True)
+print("Validación completada")
+```
+
+### 3. Adición de Nuevas Pruebas
+```python
+# Agregar nueva prueba al catálogo
+new_test = {
+    "code": "899001",
+    "name": "Nueva Prueba Especializada",
+    "desc": "Descripción de la nueva prueba..."
+}
+RAW_TEST_ROWS.append(new_test)
+```
+
+## Catálogo de Pruebas
+
+### Estudios Básicos (898xxx)
+- **898101**: Coloración Básica en Biopsia
+- **898201**: Espécimen de Reconocimiento
+- **898241**: Espécimen con Resección de Márgenes
+- **898102**: Biopsia en Médula Ósea
+
+### Estudios Inmunohistoquímicos (898807-898813)
+- **898807**: Inmunohistoquímica Básica
+- **898812**: Inmunohistoquímica Especial (Alta Complejidad)
+- **898813**: Inmunohistoquímica Especial (Marcadores Tumorales)
+- **898018**: Inmunohistoquímica en Médula Ósea
+
+### Estudios Citológicos (898002-898003)
+- **898002**: Citología de Líquido Corporal
+- **898003**: Citología por Aspiración (BACAF)
+- **898017**: Citología con Tinción Histoquímica
+
+### Estudios Especiales (898808-898809)
+- **898808**: Tinción Histoquímica en Biopsia
+- **898809**: Inmunofluorescencia en Biopsia
+- **898801**: Estudio por Congelación (Intraoperatorio)
+- **898805**: Verificación Integral
+
+### Estudios Post-mortem (898301-898304)
+- **898301**: Autopsia Completa (Neonatos en adelante)
+- **898304**: Estudio Post-mortem de Feto y Placenta
+
+## Consideraciones Importantes
+
+### Configuración Recomendada
+- **Tiempos de procesamiento**: Ajustar según capacidad del laboratorio
+- **Precios**: Configurar costos según tarifario institucional
+- **Códigos personalizados**: Adaptar a códigos internos del laboratorio
+- **Descripciones**: Actualizar según protocolos institucionales
+
+### Requisitos Previos
+- Base de datos MongoDB configurada y accesible
+- Servicios de pruebas inicializados
+- Dependencias de Python instaladas
+- Variables de entorno configuradas
+
+### Limitaciones
+- Datos hardcodeados (considerar externalizar)
+- Tiempo fijo de procesamiento (6 días para todas las pruebas)
+- Sin integración con sistemas de facturación externos
+- Sin validación de códigos CUPS oficiales
+
+## Integración con Otros Módulos
+
+### Módulo de Casos
+- Los casos pueden solicitar pruebas específicas
+- Seguimiento del estado de las pruebas
+- Asociación de resultados con casos
+
+### Módulo de Reportes
+- Generación de reportes por tipo de prueba
+- Estadísticas de pruebas solicitadas
+- Análisis de tiempos de procesamiento
+
+### Módulo de Facturación
+- Cálculo de costos por pruebas realizadas
+- Integración con tarifarios
+- Control de precios por tipo de prueba
+
+### Módulo de Laboratorio
+- Gestión de flujo de trabajo
+- Asignación de pruebas a técnicos
+- Control de calidad de resultados
+
+Este script es fundamental para establecer el catálogo de servicios que puede ofrecer el laboratorio de patología, proporcionando la base para la gestión completa de estudios anatomopatológicos en PathSys.

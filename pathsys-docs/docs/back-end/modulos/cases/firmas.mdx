@@ -1,0 +1,318 @@
+# Firmas Digitales
+
+El submódulo de firmas maneja el proceso de validación y firma digital de resultados por parte de patólogos autorizados, asegurando la integridad y autenticidad de los diagnósticos.
+
+## Objetivo
+
+Proporcionar funcionalidad completa para:
+- Firmar casos con resultados completos
+- Validar casos antes del proceso de firma
+- Actualizar estados de casos firmados
+- Registrar información de firma y timestamp
+
+## Estructura de Archivos
+
+```
+cases/
+├── routes/sign_routes.py          # Endpoints para firmas
+├── services/sign_service.py       # Lógica de negocio
+├── repositories/sign_repository.py # Acceso a datos
+└── schemas/sign.py               # Validación de datos
+```
+
+## Endpoints Disponibles
+
+### 1. Firmar Caso
+
+**PUT** `/api/v1/cases/{case_code}/sign`
+
+Firma un caso cambiando su estado de 'Por firmar' a 'Por entregar'.
+
+#### Parámetros
+- **case_code** (path): Código del caso (ej: 2025-00001)
+
+#### Request Body
+```json
+{
+  "method": ["Histopatología", "Inmunohistoquímica"],
+  "macro_result": "Fragmento de tejido de 2x1.5x0.8 cm con superficie irregular...",
+  "micro_result": "Cortes histológicos muestran arquitectura ductal alterada...",
+  "diagnosis": "Adenocarcinoma ductal invasivo grado II",
+  "observations": "Se recomienda estudio de receptores hormonales y HER2",
+  "cie10_diagnosis": {
+    "code": "C50.9",
+    "name": "Neoplasia maligna de mama, parte no especificada"
+  },
+  "cieo_diagnosis": {
+    "code": "8500/3",
+    "name": "Carcinoma ductal infiltrante"
+  }
+}
+```
+
+#### Response
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "case_code": "2025-00001",
+  "patient_info": {
+    "patient_code": "1-12345678",
+    "name": "María García",
+    "age": 45,
+    "gender": "Femenino",
+    "entity_info": {
+      "id": "EPS001",
+      "name": "EPS Salud Total"
+    }
+  },
+  "state": "Por entregar",
+  "signed_at": "2025-01-15T14:30:00Z",
+  "assigned_pathologist": {
+    "id": "PATH001",
+    "name": "Dr. Carlos Rodríguez"
+  },
+  "result": {
+    "method": ["Histopatología", "Inmunohistoquímica"],
+    "macro_result": "Fragmento de tejido de 2x1.5x0.8 cm con superficie irregular...",
+    "micro_result": "Cortes histológicos muestran arquitectura ductal alterada...",
+    "diagnosis": "Adenocarcinoma ductal invasivo grado II",
+    "observations": "Se recomienda estudio de receptores hormonales y HER2",
+    "cie10_diagnosis": {
+      "code": "C50.9",
+      "name": "Neoplasia maligna de mama, parte no especificada"
+    },
+    "cieo_diagnosis": {
+      "code": "8500/3",
+      "name": "Carcinoma ductal infiltrante"
+    },
+    "updated_at": "2025-01-15T14:30:00Z"
+  },
+  "updated_at": "2025-01-15T14:30:00Z"
+}
+```
+
+#### Códigos de Estado
+- **200**: Caso firmado exitosamente
+- **400**: Datos inválidos o caso no firmable
+- **404**: Caso no encontrado
+- **500**: Error interno del servidor
+
+#### Restricciones
+- Solo se pueden firmar casos en estado 'Por firmar'
+- El caso debe tener un resultado completo
+- El patólogo debe estar autorizado para firmar
+
+### 2. Validar Caso para Firma
+
+**GET** `/api/v1/cases/{case_code}/sign/validation`
+
+Valida si un caso puede ser firmado según su estado y completitud.
+
+#### Parámetros
+- **case_code** (path): Código del caso
+
+#### Response
+```json
+{
+  "case_code": "2025-00001",
+  "can_sign": true,
+  "current_state": "Por firmar",
+  "has_result": true,
+  "has_diagnosis": true,
+  "assigned_pathologist": {
+    "id": "PATH001",
+    "name": "Dr. Carlos Rodríguez"
+  },
+  "validation_details": {
+    "result_complete": true,
+    "diagnosis_present": true,
+    "method_specified": true,
+    "pathologist_assigned": true
+  },
+  "message": "El caso está listo para ser firmado"
+}
+```
+
+#### Casos No Firmables
+```json
+{
+  "case_code": "2025-00002",
+  "can_sign": false,
+  "current_state": "En proceso",
+  "has_result": false,
+  "has_diagnosis": false,
+  "assigned_pathologist": null,
+  "validation_details": {
+    "result_complete": false,
+    "diagnosis_present": false,
+    "method_specified": false,
+    "pathologist_assigned": false
+  },
+  "message": "El caso no puede ser firmado: falta resultado y diagnóstico"
+}
+```
+
+## Esquemas de Datos
+
+### CaseSignRequest
+```python
+class CaseSignRequest(BaseModel):
+    method: Optional[List[str]] = None
+    macro_result: Optional[str] = Field(None, max_length=5000)
+    micro_result: Optional[str] = Field(None, max_length=5000)
+    diagnosis: Optional[str] = Field(None, max_length=2000)
+    observations: Optional[str] = Field(None, max_length=1000)
+    cie10_diagnosis: Optional[Dict[str, str]] = None
+    cieo_diagnosis: Optional[Dict[str, str]] = None
+```
+
+### CaseSignValidation
+```python
+class CaseSignValidation(BaseModel):
+    case_code: str
+    can_sign: bool
+    current_state: str
+    has_result: bool
+    has_diagnosis: bool
+    assigned_pathologist: Optional[AssignedPathologist] = None
+    validation_details: Dict[str, bool]
+    message: str
+```
+
+### CaseSignResponse
+```python
+class CaseSignResponse(BaseModel):
+    case_code: str
+    signed_at: datetime
+    pathologist_id: str
+    pathologist_name: str
+    previous_state: str
+    new_state: str
+```
+
+## Lógica de Negocio
+
+### SignService
+
+#### Métodos Principales
+
+**`sign_case(case_code: str, payload: CaseSignRequest)`**
+- Valida que el caso puede ser firmado
+- Actualiza el resultado si se proporcionan datos adicionales
+- Cambia el estado del caso a 'Por entregar'
+- Registra la fecha y hora de firma
+- Asigna el patólogo que firma
+
+**`validate_case_for_signing(case_code: str)`**
+- Verifica el estado actual del caso
+- Valida completitud del resultado
+- Confirma asignación de patólogo
+- Retorna detalles de validación
+
+#### Flujo de Firma
+
+1. **Validación Previa**
+   - Verificar estado 'Por firmar'
+   - Confirmar existencia de resultado
+   - Validar diagnóstico presente
+   - Verificar patólogo asignado
+
+2. **Proceso de Firma**
+   - Actualizar resultado si se proporcionan cambios
+   - Cambiar estado a 'Por entregar'
+   - Registrar timestamp de firma
+   - Actualizar información del patólogo
+
+3. **Post-Firma**
+   - Generar notificaciones
+   - Preparar para entrega
+   - Actualizar métricas de rendimiento
+
+## Validaciones y Controles
+
+### Requisitos para Firma
+- **Estado**: Debe ser 'Por firmar'
+- **Resultado**: Debe existir al menos un diagnóstico
+- **Patólogo**: Debe estar asignado y autorizado
+- **Completitud**: Campos obligatorios deben estar presentes
+
+### Validaciones de Datos
+- Longitud máxima para campos de texto
+- Formato válido para diagnósticos CIE-10 y CIE-O
+- Métodos deben ser de lista predefinida
+- Diagnóstico no puede estar vacío
+
+### Control de Estados
+```
+En proceso → Por firmar → Por entregar → Completado
+                ↑ FIRMA AQUÍ ↑
+```
+
+## Seguridad y Auditoría
+
+### Trazabilidad
+- Registro completo de quién firma y cuándo
+- Historial de cambios en el resultado
+- Log de intentos de firma fallidos
+- Backup de estado previo a la firma
+
+### Autenticación
+- Verificación de identidad del patólogo
+- Validación de permisos de firma
+- Control de sesión activa
+- Registro de IP y timestamp
+
+### Integridad
+- Hash del resultado firmado
+- Verificación de no modificación post-firma
+- Backup automático al firmar
+- Validación de integridad de datos
+
+## Integración con Otros Módulos
+
+### Casos
+- Actualiza estado principal del caso
+- Mantiene sincronización de datos
+- Registra historial de cambios
+
+### Resultados
+- Permite actualizaciones finales antes de firma
+- Valida completitud de diagnósticos
+- Congela resultado post-firma
+
+### PDF
+- Activa generación de reporte oficial
+- Incluye información de firma en documentos
+- Prepara datos para entrega
+
+### Notificaciones
+- Envía alertas de caso firmado
+- Notifica a entidades sobre disponibilidad
+- Actualiza dashboard de estadísticas
+
+## Configuración y Variables
+
+### Variables de Entorno
+```bash
+# Configuración de firmas
+SIGNATURE_TIMEOUT=3600  # Tiempo límite para firma en segundos
+REQUIRE_PATHOLOGIST_ASSIGNMENT=true
+ALLOW_RESULT_UPDATE_ON_SIGN=true
+
+# Configuración de auditoría
+ENABLE_SIGNATURE_AUDIT=true
+SIGNATURE_LOG_LEVEL=INFO
+BACKUP_ON_SIGNATURE=true
+```
+
+### Configuración de Validaciones
+```python
+SIGNATURE_VALIDATIONS = {
+    "require_diagnosis": True,
+    "require_method": True,
+    "require_macro_result": False,
+    "require_micro_result": True,
+    "require_cie10": False,
+    "require_cieo": False
+}
+```

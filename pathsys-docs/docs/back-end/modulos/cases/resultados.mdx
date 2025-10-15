@@ -1,0 +1,232 @@
+# Resultados de Casos
+
+El submódulo de resultados maneja el procesamiento y almacenamiento de resultados de análisis patológicos, incluyendo diagnósticos macro y microscópicos.
+
+## Objetivo
+
+Proporcionar funcionalidad completa para:
+- Actualizar resultados de casos patológicos
+- Validar estados de casos para edición
+- Gestionar diagnósticos CIE-10 y CIE-O
+- Controlar el flujo de trabajo de resultados
+
+## Estructura de Archivos
+
+```
+cases/
+├── routes/result_routes.py          # Endpoints para resultados
+├── services/result_service.py       # Lógica de negocio
+├── repositories/result_repository.py # Acceso a datos
+└── schemas/result.py               # Validación de datos
+```
+
+## Endpoints Disponibles
+
+### 1. Actualizar Resultado de Caso
+
+**PUT** `/api/v1/cases/{case_code}/result`
+
+Actualiza el resultado de un caso específico.
+
+#### Parámetros
+- **case_code** (path): Código del caso (ej: 2025-00001)
+
+#### Request Body
+```json
+{
+  "method": ["Histopatología", "Inmunohistoquímica"],
+  "macro_result": "Fragmento de tejido de 2x1.5x0.8 cm...",
+  "micro_result": "Cortes histológicos muestran...",
+  "diagnosis": "Adenocarcinoma ductal invasivo",
+  "observations": "Se recomienda estudio de receptores hormonales",
+  "cie10_diagnosis": {
+    "code": "C50.9",
+    "name": "Neoplasia maligna de mama, parte no especificada"
+  },
+  "cieo_diagnosis": {
+    "code": "8500/3",
+    "name": "Carcinoma ductal infiltrante"
+  }
+}
+```
+
+#### Response
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "case_code": "2025-00001",
+  "patient_info": {
+    "patient_code": "1-12345678",
+    "name": "María García",
+    "age": 45,
+    "gender": "Femenino"
+  },
+  "state": "Por firmar",
+  "result": {
+    "method": ["Histopatología", "Inmunohistoquímica"],
+    "macro_result": "Fragmento de tejido de 2x1.5x0.8 cm...",
+    "micro_result": "Cortes histológicos muestran...",
+    "diagnosis": "Adenocarcinoma ductal invasivo",
+    "observations": "Se recomienda estudio de receptores hormonales",
+    "cie10_diagnosis": {
+      "code": "C50.9",
+      "name": "Neoplasia maligna de mama, parte no especificada"
+    },
+    "cieo_diagnosis": {
+      "code": "8500/3",
+      "name": "Carcinoma ductal infiltrante"
+    },
+    "updated_at": "2025-01-15T10:30:00Z"
+  },
+  "updated_at": "2025-01-15T10:30:00Z"
+}
+```
+
+#### Códigos de Estado
+- **200**: Resultado actualizado exitosamente
+- **400**: Datos inválidos o caso no editable
+- **404**: Caso no encontrado
+- **500**: Error interno del servidor
+
+#### Restricciones
+- Solo se pueden editar casos con estado 'En proceso' o 'Por firmar'
+- Todos los campos son opcionales
+- Al actualizar, el caso cambia automáticamente a estado 'Por firmar'
+
+### 2. Obtener Resultado de Caso
+
+**GET** `/api/v1/cases/{case_code}/result`
+
+Obtiene el resultado actual de un caso.
+
+#### Parámetros
+- **case_code** (path): Código del caso
+
+#### Response
+```json
+{
+  "case_code": "2025-00001",
+  "result": {
+    "method": ["Histopatología"],
+    "macro_result": "Fragmento de tejido...",
+    "micro_result": "Cortes histológicos...",
+    "diagnosis": "Adenocarcinoma ductal invasivo",
+    "observations": "Observaciones adicionales",
+    "cie10_diagnosis": {
+      "code": "C50.9",
+      "name": "Neoplasia maligna de mama"
+    },
+    "updated_at": "2025-01-15T10:30:00Z"
+  },
+  "can_edit": true,
+  "state": "Por firmar"
+}
+```
+
+### 3. Validar Caso para Edición
+
+**GET** `/api/v1/cases/{case_code}/result/validation`
+
+Valida si un caso puede ser editado según su estado actual.
+
+#### Response
+```json
+{
+  "case_code": "2025-00001",
+  "can_edit": true,
+  "current_state": "En proceso",
+  "message": "El caso puede ser editado"
+}
+```
+
+## Esquemas de Datos
+
+### ResultUpdate
+```python
+class ResultUpdate(BaseModel):
+    method: Optional[List[str]] = None
+    macro_result: Optional[str] = Field(None, max_length=5000)
+    micro_result: Optional[str] = Field(None, max_length=5000)
+    diagnosis: Optional[str] = Field(None, max_length=2000)
+    observations: Optional[str] = Field(None, max_length=1000)
+    cie10_diagnosis: Optional[Dict[str, str]] = None
+    cieo_diagnosis: Optional[Dict[str, str]] = None
+```
+
+### ResultResponse
+```python
+class ResultResponse(BaseModel):
+    case_code: str
+    result: Optional[CaseResult] = None
+    can_edit: bool
+    state: str
+```
+
+## Lógica de Negocio
+
+### ResultService
+
+#### Métodos Principales
+
+**`update_case_result(case_code: str, payload: ResultUpdate)`**
+- Valida que el caso existe y puede ser editado
+- Actualiza los campos de resultado proporcionados
+- Cambia el estado del caso a 'Por firmar' automáticamente
+- Registra la fecha de actualización
+
+**`get_case_result(case_code: str)`**
+- Obtiene el resultado actual del caso
+- Incluye información sobre si puede ser editado
+- Retorna el estado actual del caso
+
+**`validate_case_for_editing(case_code: str)`**
+- Verifica si el caso puede ser editado
+- Retorna información detallada sobre el estado
+
+## Validaciones y Controles
+
+### Estados Permitidos para Edición
+- **En proceso**: Caso recién creado, permite edición completa
+- **Por firmar**: Resultado agregado, permite modificaciones antes de firma
+
+### Estados No Editables
+- **Por entregar**: Caso firmado, no permite modificaciones
+- **Completado**: Caso entregado, solo lectura
+
+### Validaciones de Datos
+- Longitud máxima para campos de texto
+- Formato válido para diagnósticos CIE-10 y CIE-O
+- Métodos deben ser de una lista predefinida
+
+## Integración con Otros Módulos
+
+### Casos
+- Actualiza el estado del caso principal
+- Mantiene sincronización con información del paciente
+
+### Firmas
+- Prepara casos para el proceso de firma digital
+- Valida completitud de resultados antes de firma
+
+### PDF
+- Proporciona datos para generación de reportes
+- Incluye diagnósticos formateados para documentos oficiales
+
+## Configuración y Seguridad
+
+### Variables de Entorno
+```bash
+# Configuración de base de datos
+MONGODB_URL=mongodb://localhost:27017
+DATABASE_NAME=pathsys
+
+# Configuración de validaciones
+MAX_RESULT_LENGTH=5000
+MAX_DIAGNOSIS_LENGTH=2000
+```
+
+### Consideraciones de Seguridad
+- Validación estricta de estados antes de modificaciones
+- Logging de todas las actualizaciones de resultados
+- Control de acceso basado en roles de usuario
+- Sanitización de datos de entrada
