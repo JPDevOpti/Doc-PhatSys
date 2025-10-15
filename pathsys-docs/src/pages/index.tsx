@@ -32,12 +32,6 @@ function HomepageHeader() {
             to="docs/introduccion">
             <span>Comenzar con la documentación</span>
           </Link>
-          <Link
-            className="button button--secondary button--lg"
-            to="/manual"
-            style={{marginLeft: 8}}>
-            <span>Ir al manual de usuario</span>
-          </Link>
         </div>
       </div>
     </header>

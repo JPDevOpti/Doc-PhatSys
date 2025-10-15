@@ -56,17 +56,8 @@ const config: Config = {
   markdown: { mermaid: true },
   themes: ['@docusaurus/theme-mermaid'],
 
-  plugins: [
-    [
-      '@docusaurus/plugin-content-docs',
-      {
-        id: 'manual',
-        path: 'docs/manual-de-usuario',
-        routeBasePath: 'manual',
-        sidebarPath: './sidebars.manual.ts',
-      },
-    ],
-  ],
+  // Removed manual docs plugin to eliminate the user manual section completely
+  plugins: [],
 
   themeConfig: {
     // Replace with your project's social card
@@ -88,11 +79,6 @@ const config: Config = {
           docId: 'introduccion',
           position: 'left',
           label: 'Documentación',
-        },
-        {
-          to: '/manual',
-          position: 'left',
-          label: 'Manual de Usuario',
         },
         {
           type: 'html',

@@ -161,25 +161,25 @@ async def import_pathologists():
 
 ## Características Técnicas
 
-### 🔧 Generación Automática
+### Generación Automática
 - **Iniciales**: Extracción automática de iniciales del nombre
 - **Email**: Composición basada en código y nombre normalizado
 - **Códigos únicos**: Validación de unicidad de códigos de patólogo
 - **Normalización**: Limpieza y formato consistente de texto
 
-### 🔒 Validaciones
+### Validaciones
 - **Código único**: Verificación de códigos no duplicados
 - **Email único**: Control de emails no duplicados
 - **Formato de datos**: Validación mediante schemas Pydantic
 - **Existencia previa**: Verificación antes de crear
 
-### 🛡️ Seguridad
+### Seguridad
 - **Contraseñas temporales**: Contraseñas que deben cambiarse en primer acceso
 - **Validación de entrada**: Sanitización de datos de entrada
 - **Manejo de errores**: Control robusto de excepciones
 - **Logging seguro**: Registro sin exponer credenciales
 
-### ⚡ Rendimiento
+### Rendimiento
 - **Operaciones asíncronas**: Procesamiento no bloqueante
 - **Verificación previa**: Evita duplicados innecesarios
 - **Transacciones atómicas**: Consistencia de datos
@@ -268,25 +268,25 @@ oncology_pathologists = [
 
 ## Consideraciones Importantes
 
-### 🚨 Seguridad en Producción
+### Seguridad en Producción
 - **Cambiar contraseñas**: Las contraseñas temporales DEBEN cambiarse
 - **Emails institucionales**: Usar dominio de la institución
 - **Códigos reales**: Usar códigos de registro médico válidos
 - **Verificación de identidad**: Validar identidad de patólogos
 
-### 🔧 Configuración Recomendada
+### Configuración Recomendada
 - **Variables de entorno**: Usar para configuración de emails
 - **Archivo de configuración**: Externalizar datos de patólogos
 - **Integración LDAP**: Conectar con directorio institucional
 - **Validación médica**: Verificar registro profesional
 
-### 📋 Requisitos Previos
+### Requisitos Previos
 - Base de datos MongoDB configurada y accesible
 - Servicios de patólogos inicializados
 - Dependencias de Python instaladas
 - Variables de entorno configuradas
 
-### ⚠️ Limitaciones
+### Limitaciones
 - Contraseñas temporales en texto plano
 - Datos hardcodeados (considerar externalizar)
 - Sin validación de registro médico
