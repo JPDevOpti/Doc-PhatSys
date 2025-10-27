@@ -8,6 +8,7 @@ const config: Config = {
   title: 'PathSys Docs - LIME',
   tagline: 'Sistema de gestión de casos patológicos para Laboratorios Integrados de Medicina Especializada',
   favicon: 'img/favicon.ico',
+  trailingSlash: false,
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
@@ -56,12 +57,22 @@ const config: Config = {
   markdown: { mermaid: true },
   themes: ['@docusaurus/theme-mermaid'],
 
-  // Removed manual docs plugin to eliminate the user manual section completely
-  plugins: [],
+  // Additional docs instance for User Manual at /user
+  plugins: [
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'user',
+        path: 'user',
+        routeBasePath: 'user',
+        sidebarPath: './sidebars.user.ts',
+      },
+    ],
+  ],
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/docusaurus.png',
     colorMode: {
       respectPrefersColorScheme: false,
       defaultMode: 'light',
@@ -79,6 +90,13 @@ const config: Config = {
           docId: 'introduccion',
           position: 'left',
           label: 'Documentación',
+        },
+        {
+          type: 'doc',
+          docsPluginId: 'user',
+          docId: 'index',
+          position: 'left',
+          label: 'Manual de Usuario',
         },
         {
           type: 'html',
