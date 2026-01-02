@@ -79,25 +79,12 @@ const config: Config = {
       disableSwitch: true,
     },
     navbar: {
-      title: 'PathSys Docs - LIME',
+      title: '',
       logo: {
-        alt: 'LIME - Laboratorios Integrados de Medicina Especializada',
+        alt: 'LIME',
         src: 'img/logo.png',
       },
       items: [
-        {
-          type: 'doc',
-          docId: 'introduccion',
-          position: 'left',
-          label: 'Documentación',
-        },
-        {
-          type: 'doc',
-          docsPluginId: 'user',
-          docId: 'index',
-          position: 'left',
-          label: 'Manual de Usuario',
-        },
         {
           type: 'html',
           position: 'right',

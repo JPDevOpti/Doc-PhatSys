@@ -1,0 +1,97 @@
+---
+title: Listado de Pacientes y Casos
+sidebar_position: 3
+displayed_sidebar: patologoSidebar
+---
+
+# Listado de Pacientes y Casos
+
+En este módulo, usted podrá visualizar y gestionar tanto los pacientes registrados en el sistema como los casos asignados o disponibles para su análisis. A continuación, se detallan las funcionalidades de cada listado.
+
+<div style={{
+  position: 'relative',
+  paddingBottom: '56.25%', /* 16:9 */
+  height: 0,
+  marginBottom: '20px',
+  borderRadius: '8px',
+  overflow: 'hidden'
+}}>
+  <iframe 
+    src="https://www.youtube.com/embed/MqWnRTzCHa0" 
+    title="Gestión de Listados de Pacientes y Casos"
+    style={{
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      border: 0
+    }}
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+    allowFullScreen
+  />
+</div>
+
+## Listado de Pacientes
+
+El listado de pacientes le permite buscar y consultar la información demográfica y clínica de los pacientes, así como acceder a su historial de casos.
+
+### Funcionalidades Principales
+
+1.  **Búsqueda y Filtros:**
+    *   Puede buscar pacientes por nombre, número de documento o tipo de identificación.
+    *   Utilice los filtros avanzados para refinar la búsqueda por rango de fechas, entidad, género, municipio, etc.
+    *   Botones de acción: **Buscar**, **Limpiar** filtros y **Actualizar** la lista.
+
+2.  **Tabla de Resultados:**
+    *   Muestra información clave como: Documento, Nombre completo, Género/Edad, Entidad y Ubicación.
+    *   Puede ordenar las columnas ascendente o descendentemente haciendo clic en el encabezado.
+    *   La tabla está paginada para facilitar la navegación.
+
+3.  **Detalles del Paciente:**
+    *   Al hacer clic en el botón de "Ver detalles" (icono de ojo) en una fila, se abrirá una ventana con la información completa del paciente.
+    *   En esta vista también podrá ver el **historial de casos** asociados a ese paciente, permitiéndole consultar diagnósticos previos.
+
+<div style={{marginTop: 20, marginBottom: 20}}>
+  <img src="/img/Captures/TablaPacientes.png" alt="Vista del listado de pacientes" style={{border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}} />
+  <div style={{textAlign: 'center', fontSize: 13, color: '#6b7280', marginTop: 6}}>Ejemplo del listado de pacientes</div>
+</div>
+
+---
+
+## Listado de Casos
+
+El listado de casos es su herramienta principal de trabajo. Aquí encontrará los casos que requieren su atención, análisis o validación.
+
+### Funcionalidades Principales
+
+1.  **Filtros de Trabajo:**
+    *   **Búsqueda General:** Encuentre casos por código o nombre del paciente.
+    *   **Mis Casos:** Filtre rápidamente para ver solo los casos asignados a usted.
+    *   **Estado:** Filtre por estados como "Pendiente", "En Proceso", "Para Revisión" o "Finalizado".
+    *   **Fecha:** Busque casos dentro de un rango de fechas específico.
+
+2.  **Gestión en la Tabla:**
+    *   La tabla muestra: Código del caso, Paciente, Entidad, Pruebas solicitadas, Estado actual y Fechas relevantes.
+    *   Los estados se muestran con etiquetas de colores para una rápida identificación visual.
+    *   Puede ordenar la lista por fecha de creación o prioridad.
+
+3.  **Acciones sobre el Caso:**
+    *   **Ver Detalles:** Acceda a la información completa del caso, incluyendo datos clínicos y administrativos.
+    *   **Gestionar/Analizar:** Desde aquí podrá ingresar al módulo de análisis para registrar sus hallazgos y diagnósticos.
+    *   **Historial:** Consulte la trazabilidad del caso para ver quién ha intervenido y en qué momentos.
+
+<div style={{marginTop: 20, marginBottom: 20}}>
+  <img src="/img/Captures/TablaCasos.png" alt="Vista del listado de casos" style={{border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)'}} />
+  <div style={{textAlign: 'center', fontSize: 13, color: '#6b7280', marginTop: 6}}>Ejemplo del listado de casos</div>
+</div>
+
+### Consejos de Uso
+
+:::tip Optimice su flujo
+Utilice los filtros de **Estado** para organizar su día. Por ejemplo, comience revisando los casos "Pendientes" o "Urgentes" antes de pasar a los de rutina.
+:::
+
+:::info Exportación
+Si necesita trabajar con los datos fuera del sistema, utilice el botón **Exportar a Excel** disponible en la barra de herramientas de ambos listados.
+:::
